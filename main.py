@@ -17,10 +17,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    from pathlib import Path
+
+    from localdrop import config
+    from localdrop.system.single_instance import forward
+
+    request = {"send": [str(Path(p).resolve()) for p in args.send]} if args.send else {"show": True}
+    if forward(config.data_dir(args.profile), request):
+        return 0
+
     from localdrop.app import App
 
     app = App(profile=args.profile, port=args.port, debug=args.debug)
-    app.run(start_hidden=args.hidden)
+    if args.send:
+        app.pending_request = request
+    app.run(start_hidden=args.hidden and not args.send)
     return 0
 
 

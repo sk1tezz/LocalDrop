@@ -26,12 +26,25 @@ def main(argv: list[str] | None = None) -> int:
     if forward(config.data_dir(args.profile), request):
         return 0
 
+    import logging
+    import os
+
     from localdrop.app import App
 
     app = App(profile=args.profile, port=args.port, debug=args.debug)
+    log = logging.getLogger("main")
+    sys.excepthook = lambda *exc: log.critical("unhandled exception", exc_info=exc)
+    if os.environ.get("LOCALDROP_TRACE"):
+        import faulthandler
+        trace = open(app.ddir / "trace.txt", "w")
+        faulthandler.dump_traceback_later(25, repeat=False, file=trace)
     if args.send:
         app.pending_request = request
-    app.run(start_hidden=args.hidden and not args.send)
+    try:
+        app.run(start_hidden=args.hidden and not args.send)
+    except Exception:
+        log.critical("LocalDrop crashed", exc_info=True)
+        raise
     return 0
 
 

@@ -115,6 +115,10 @@ class App:
         self.add_service(self.files)
         self.history_handlers["files"] = self._history_files
 
+        from .clip.sync import ClipService
+        self.clip = ClipService(self, self.peers)
+        self.add_service(self.clip)
+
         from .net.pairing import Pairing
         self.pairing = Pairing(self, self.peers)
         self.add_service(self.pairing)

@@ -61,6 +61,7 @@ class PeerManager:
         self.handlers: dict[str, Handler] = {}
         self.stream_handlers: dict[str, Callable[[Device, Conn, dict], Awaitable[None]]] = {}
         self.online_listeners: list[Callable[[str, bool], None]] = []
+        self.paired_listeners: list[Callable[[str], None]] = []
         self._pending: dict[str, asyncio.Future] = {}
         self._rid = itertools.count(1)
         self._dialing: dict[str, asyncio.Task] = {}
@@ -185,9 +186,16 @@ class PeerManager:
 
     def set_paired(self, dev_id: str, trusted: bool) -> None:
         d = self.devices[dev_id]
+        was = d.paired
         d.paired, d.trusted = True, trusted
         self._save(d)
         self._changed()
+        if not was:
+            for fn in self.paired_listeners:
+                try:
+                    fn(dev_id)
+                except Exception:
+                    log.exception("paired listener failed")
 
     def set_trust(self, dev_id: str, trusted: bool) -> None:
         d = self.devices.get(dev_id)

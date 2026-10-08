@@ -45,6 +45,12 @@ function transferView(tr, v) {
   };
 }
 
+function clipTitle(c) {
+  if (c.type !== 'image') return c.text;
+  const d = new Date(c.ts * 1000);
+  return t('Изображение') + ' · ' + d.toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-US') + ' ' + hhmm(c.ts);
+}
+
 function histView(h, v) {
   const d = v.dev(h.dev), f = FC[h.type] || FC.files;
   return {
@@ -216,7 +222,7 @@ function Home({ s, ui, setUi, go, v, sendTo }) {
         </div>
         <div onClick=${() => go('clip')} style="background:var(--surf2);border-radius:8px;padding:12px;height:84px;display:flex;flex-direction:column;gap:6px;cursor:pointer">
           <div style="font-size:11px;color:var(--tx3);font-weight:600">${t('Последнее')} · ${last ? (last.dev === 'me' ? t('Этот ПК') : v.dev(last.dev).name) : '—'}</div>
-          <div style="font-size:13px;font-weight:600;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">${last ? last.text : t('Буфер пуст')}</div>
+          <div style="font-size:13px;font-weight:600;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">${last ? clipTitle(last) : t('Буфер пуст')}</div>
         </div>
         <div style="display:flex;gap:8px">
           <button onClick=${() => api('clip_send_current')} style="flex:1;height:32px;border-radius:7px;background:var(--clipT);color:var(--clip);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px" style-hover="filter:brightness(1.15)"><i style="font-size:17px">send</i>${t('Отправить сейчас')}</button>
@@ -441,11 +447,11 @@ function Clipboard({ s, ui, setUi, v }) {
         const mono = c.type === 'text' && /^[\w.-]+\s|[{};=]|^\$ |==/.test(c.text) && !/\s{2}/.test(c.text) && c.text.length < 200 && !/[а-яё]/i.test(c.text);
         return html`<div key=${c.id} style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surf);border:1px solid var(--line2);border-radius:10px" style-hover="border-color:var(--line)">
           ${c.type === 'image'
-            ? html`<div style="width:64px;height:44px;border-radius:7px;border:1px solid var(--line);background:var(--surf2) center/cover no-repeat;background-image:url(${c.thumb});flex:none"></div>`
+            ? html`<img src=${c.thumb} alt="" style="width:64px;height:44px;border-radius:7px;border:1px solid var(--line);background:var(--surf2);object-fit:cover;flex:none" />`
             : html`<div style="width:38px;height:38px;border-radius:9px;background:var(--clipT);display:flex;align-items:center;justify-content:center;flex:none"><i style="color:var(--clip)">${info[0]}</i></div>`}
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-            <div style="font-size:13px;font-weight:600;line-height:1.4;font-family:${mono ? "'JetBrains Mono',monospace" : 'inherit'};overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;white-space:pre-wrap">${c.text}</div>
-            <div style="font-size:11px;color:var(--tx3);display:flex;gap:6px;flex-wrap:wrap"><span>${info[1]}</span><span>·</span><span>${c.dev === 'me' ? t('Этот ПК') : v.dev(c.dev).name}</span><span>·</span><span>${ago(c.ts)}</span>${c.meta ? html`<span>·</span><span>${c.meta}</span>` : null}</div>
+            <div style="font-size:13px;font-weight:600;line-height:1.4;font-family:${mono ? "'JetBrains Mono',monospace" : 'inherit'};overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;white-space:pre-wrap">${clipTitle(c)}</div>
+            <div style="font-size:11px;color:var(--tx3);display:flex;gap:6px;flex-wrap:wrap"><span>${info[1]}</span><span>·</span><span>${c.dev === 'me' ? t('Этот ПК') : v.dev(c.dev).name}</span><span>·</span><span>${ago(c.ts)}</span>${c.meta ? html`<span>·</span><span>${subText(c.meta)}</span>` : null}</div>
           </div>
           <div style="display:flex;gap:2px">
             <${IconBtn} icon="content_copy" title=${t('Скопировать')} onClick=${() => api('clip_copy', c.id)} />
@@ -700,7 +706,7 @@ function QrScanModal({ qr }) {
   return html`<div style="position:absolute;inset:40px 0 0 0;background:rgba(8,9,10,.55);display:flex;align-items:center;justify-content:center;z-index:45">
     <div style="width:460px;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 60px rgba(0,0,0,.35);animation:ldIn .2s ease-out">
       <div style="font-size:16px;font-weight:800">${t('Сканирование QR-кода')}</div>
-      <div style="height:300px;border-radius:10px;background:#000 center/cover no-repeat;background-image:${qr.frame ? 'url(' + qr.frame + ')' : 'none'};display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px">${qr.frame ? '' : (qr.error || t('Включаю камеру…'))}</div>
+      <div style="height:300px;border-radius:10px;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px">${qr.frame ? html`<img src=${qr.frame} alt="" style="width:100%;height:100%;object-fit:cover" />` : (qr.error || t('Включаю камеру…'))}</div>
       <div style="font-size:12px;color:${qr.error ? 'var(--bad)' : 'var(--tx2)'};line-height:1.5">${qr.error || t('Наведите камеру на QR-код на экране другого устройства (Устройства → Добавить)')}</div>
       <button onClick=${() => api('qr_scan_stop')} style="height:38px;border-radius:8px;background:var(--surf2);font-weight:700" style-hover="background:var(--hover)">${t('Закрыть')}</button>
     </div>

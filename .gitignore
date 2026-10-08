@@ -244,3 +244,9 @@ cython_debug/
 
 # LocalDrop
 !packaging/*.spec
+
+# IDE
+.idea/
+
+# source font for tools/subset_icons.py (downloaded on demand)
+tools/material-symbols-rounded.woff2

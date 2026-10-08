@@ -208,6 +208,8 @@ class App:
                 log.exception("slice %s failed", n)
         if data:
             self.emit("state", data)
+            if self.tray is not None and ("audio" in data or "settings" in data):
+                self.tray.refresh()
 
     def full_state(self) -> dict:
         return {n: b() for n, b in self.slices.items()}
@@ -242,18 +244,39 @@ class App:
     def _register_core(self) -> None:
         self.add_slice("settings", self.settings.all)
         self.add_slice("me", self.me)
-        self.expose("init", self.full_state)
+        self.expose("init", self._api_init)
         self.expose("settings", self._api_settings)
         self.expose("win", self._api_win)
         self.history_handlers: dict[str, Callable] = {}
         self.add_slice("history", lambda: self.storage.history(500))
         self.expose("history_clear", self._api_history_clear)
         self.expose("history_action", self._api_history_action)
+        self.expose("shell_menu", self._api_shell_menu)
         self.expose("jslog", lambda m: logging.getLogger("ui").error("%s", m))
         self.expose("open_logs", lambda: open_path(str(self.ddir / "localdrop.log")))
         self.expose("reveal", lambda p: open_path(p, reveal=True))
         self.expose("open_path", lambda p: open_path(p))
         self.settings.on_change(self._on_settings)
+
+    def _api_shell_menu(self, on: bool) -> None:
+        if not IS_WIN:
+            return
+        from .system import shell_win
+        if on:
+            shell_win.install(self.tr("Отправить через LocalDrop"), self._icon_path())
+        else:
+            shell_win.uninstall()
+        self.me_extra["shell_menu"] = shell_win.is_installed()
+        self.publish("me")
+
+    def _icon_path(self) -> str:
+        if getattr(sys, "frozen", False):
+            return sys.executable
+        return str(Path(__file__).resolve().parent / "assets" / "icon.ico")
+
+    def _api_init(self) -> dict:
+        log.info("UI connected")
+        return self.full_state()
 
     def _api_history_clear(self) -> None:
         self.storage.clear_history()
@@ -275,6 +298,11 @@ class App:
 
     def _on_settings(self, changes: dict, _all: dict) -> None:
         self.publish("settings")
+        if "autostart" in changes and not self.profile:
+            from .system import autostart
+            autostart.set_enabled(bool(changes["autostart"]))      # an explicit switch by the user
+        if self.tray is not None:
+            self.tray.refresh()
         if "interface" in changes:
             self.ip = ifaces.pick_ip(changes["interface"])
             self.publish("me")
@@ -291,6 +319,7 @@ class App:
             self.toast("bad", "Файл не найден", "Возможно, его переместили или удалили")
 
     def _api_win(self, action: str) -> None:
+        log.info("window action %s (tray=%s)", action, self.tray is not None)
         w = self.window
         if w is None:
             return
@@ -396,9 +425,25 @@ class App:
         self._loop_thread.start()
         asyncio.run_coroutine_threadsafe(self._start_services(), self.loop).result(30)
 
+        from .system import autostart
+        from .system.notify import Notifier
+        from .system.tray import Tray
+        real = autostart.sync(bool(self.settings.get("autostart")), self.profile)
+        if not self.profile and real != bool(self.settings.get("autostart")):
+            self.settings.update({"autostart": real})
+        if IS_WIN:
+            from .system import shell_win
+            self.me_extra["shell_menu"] = shell_win.is_installed()
+        # WinRT (used by desktop-notifier) must not touch the GUI thread's COM apartment:
+        # WebView2 needs it to stay STA, so create the notifier on the asyncio thread.
+        async def make_notifier():
+            self.notifier = Notifier(self)
+        asyncio.run_coroutine_threadsafe(make_notifier(), self.loop).result(15)
+        tray = Tray(self)
+        self.tray = tray if not os.environ.get("LOCALDROP_NO_TRAY") and tray.start() else None
+
         dark = self.settings.get("theme") != "light"
-        # local files are tiny: never serve stale UI files from the WebView cache after an update
-        os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-http-cache")
+        self._clear_web_cache()
         self.window = webview.create_window(
             "LocalDrop" + (f" ({self.profile})" if self.profile else ""), url=ui_url(), js_api=Bridge(self),
             width=1200, height=780, min_size=(1060, 700), frameless=True, easy_drag=False,
@@ -422,6 +467,14 @@ class App:
                 pass
         self.loop.call_soon_threadsafe(self.loop.stop)
         self.storage.close()
+
+    def _clear_web_cache(self) -> None:
+        """The UI is served from local files; the WebView's HTTP cache only risks running stale
+        files after an update (it caches by heuristics), so start every session without it."""
+        import shutil
+        base = self.ddir / "webview" / "EBWebView" / "Default"
+        for name in ("Cache", "Code Cache", "GPUCache"):
+            shutil.rmtree(base / name, ignore_errors=True)
 
     def _after_start(self) -> None:
         for svc in self.services:

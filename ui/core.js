@@ -90,13 +90,20 @@ function api(name, ...args) {
   return p.call(name, args);
 }
 
-function jslog(msg) { try { api('jslog', String(msg)); } catch (e) { /* backend not ready */ } }
+function jslog(msg) {
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.call) api('jslog', String(msg)).catch(() => {});
+  else (window.__errs = window.__errs || []).push(String(msg));
+}
 window.addEventListener('error', e => jslog(e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
 window.addEventListener('unhandledrejection', e => jslog('unhandled: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
 
+onBackendReady(() => (window.__errs || []).splice(0).forEach(jslog));
+
 function onBackendReady(fn) {
-  if (window.pywebview && window.pywebview.api && window.pywebview.api.call) fn();
-  else window.addEventListener('pywebviewready', fn, { once: true });
+  // pywebviewready may fire before the API object is filled in: wait for api.call itself
+  const ready = () => window.pywebview && window.pywebview.api && window.pywebview.api.call;
+  if (ready()) { fn(); return; }
+  const timer = setInterval(() => { if (ready()) { clearInterval(timer); fn(); } }, 50);
 }
 
 // ---- i18n -----------------------------------------------------------------

@@ -1,4 +1,8 @@
 window.I18N_EN = {
+"Открыть LocalDrop": "Open LocalDrop",
+"Синхронизация буфера": "Clipboard sync",
+"Выход": "Quit",
+"Отправить через LocalDrop": "Send with LocalDrop",
 "Весь звук системы": "All system sound",
 "Трансляция звука": "Audio stream",
 "{0}": "{0}",

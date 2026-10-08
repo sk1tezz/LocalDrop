@@ -31,7 +31,7 @@ function transferView(tr, v) {
   const labels = {
     active: speed ? fmtRate(speed) : t('соединение…'), paused: t('на паузе'), queued: t('в очереди'),
     waiting: t('ожидает подтверждения'), ask: t('хочет отправить вам'), offline: t('ждёт устройство'),
-    error: tr.error || t('ошибка'), declined: t('отклонено'), cancelled: t('отменено'), done: t('готово'),
+    error: tr.error ? subText(tr.error) : t('ошибка'), declined: t('отклонено'), cancelled: t('отменено'), done: t('готово'),
   };
   return {
     ...tr, d, pct, icon: kindIcon[tr.kind] || 'draft', devName: d.name,

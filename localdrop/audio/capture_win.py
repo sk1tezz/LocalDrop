@@ -259,7 +259,8 @@ class ProcessCapture:
             cap = ctypes.cast(cap_ptr, POINTER(IAudioCaptureClient))
             client.Start()
         except Exception as e:
-            self._error = e.args[0] if isinstance(e, CaptureError) else f"захват приложения не удался: {e}"
+            log.warning("process capture failed: %s", e)
+            self._error = e.args[0] if isinstance(e, CaptureError) else "захват приложения не удался"
             self._ready.set()
             return
         self._ready.set()

@@ -124,7 +124,8 @@ function fmtArg(a) {
     if ('dur' in a) return durationText(a.dur);
     return '';
   }
-  return typeof a === 'string' ? t(a) : String(a);
+  if (typeof a === 'string') return a[0] === '{' ? subText(a) : t(a);
+  return String(a);
 }
 
 // History "sub" lines are stored as {"k": key, "a": [args]} so they follow the UI language.

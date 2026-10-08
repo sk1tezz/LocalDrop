@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import re
@@ -52,7 +53,10 @@ _BAD_CHARS = re.compile(r'[<>:"|?*\x00-\x1f]')
 
 
 class TransferError(Exception):
-    pass
+    """Error shown to the user: a translatable key plus arguments, stored as JSON."""
+
+    def __init__(self, key: str, *args):
+        super().__init__(json.dumps({"k": key, "a": [str(a) for a in args]}, ensure_ascii=False))
 
 
 def kind_of(name: str, is_dir: bool = False) -> str:
@@ -98,7 +102,7 @@ def scan(path: Path) -> tuple[list[dict], int, int]:
         size = path.stat().st_size
         return [{"rel": path.name, "path": str(path), "size": size}], size, 1
     if not path.is_dir():
-        raise TransferError(f"not found: {path}")
+        raise TransferError("файл не найден: {0}", path)
     items, total, count = [], 0, 0
     base = path.parent
     for root, dirs, files in os.walk(path):
@@ -433,7 +437,7 @@ class FileService:
                 hasher = await loop.run_in_executor(None, _hash_prefix, path, offset)
                 f = open(path, "rb")
             except OSError as e:
-                raise TransferError(f"не удалось прочитать {it['rel']}: {e.strerror or e}") from e
+                raise TransferError("не удалось прочитать {0}", it["rel"]) from e
             sent = offset
             try:
                 f.seek(offset)
@@ -456,11 +460,11 @@ class FileService:
             finally:
                 f.close()
             if sent != it["size"]:
-                raise TransferError(f"файл изменился во время отправки: {it['rel']}")
+                raise TransferError("файл изменился во время отправки: {0}", it["rel"])
             await conn.send({"type": "end", "i": i, "hash": hasher.hexdigest()})
             ack, _ = await asyncio.wait_for(conn.recv(), 60)
             if not ack.get("ok"):
-                raise TransferError(ack.get("error") or f"контрольная сумма не совпала: {it['rel']}")
+                raise TransferError("контрольная сумма не совпала: {0}", it["rel"])
         await conn.send({"type": "fin"})
         ack, _ = await asyncio.wait_for(conn.recv(), 30)
         if ack.get("type") != "fin_ok":
@@ -614,9 +618,8 @@ class FileService:
                     if hasher.hexdigest() != msg.get("hash"):
                         part.unlink(missing_ok=True)
                         t.done -= it["size"]
-                        await conn.send({"type": "ack", "i": cur, "ok": False,
-                                         "error": f"контрольная сумма не совпала: {it['rel']}"})
-                        raise TransferError(f"контрольная сумма не совпала: {it['rel']}")
+                        await conn.send({"type": "ack", "i": cur, "ok": False})
+                        raise TransferError("контрольная сумма не совпала: {0}", it["rel"])
                     final = Path(it["dest"])
                     if final.exists():
                         final = unique_path(final)

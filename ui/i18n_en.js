@@ -1,4 +1,13 @@
 window.I18N_EN = {
+"файл не найден: {0}": "file not found: {0}",
+"не удалось прочитать {0}": "couldn't read {0}",
+"файл изменился во время отправки: {0}": "{0} changed while it was being sent",
+"контрольная сумма не совпала: {0}": "checksum mismatch: {0}",
+"несовпадение списка файлов": "the file list doesn't match",
+"получатель не подтвердил завершение": "the receiver didn't confirm the end",
+"захват приложения не удался": "app capture failed",
+"захват звука не удался": "sound capture failed",
+"нет дисплея для захвата": "no display to capture",
 "Открыть LocalDrop": "Open LocalDrop",
 "Синхронизация буфера": "Clipboard sync",
 "Выход": "Quit",

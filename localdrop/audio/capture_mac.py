@@ -95,7 +95,8 @@ class _SCKCapture:
         queue = dispatch.dispatch_queue_create(b"localdrop.audio", None)
         ok, err = self._stream.addStreamOutput_type_sampleHandlerQueue_error_(self._output, 1, queue, None)
         if not ok:
-            raise CaptureError(f"захват звука не удался: {err}")
+            log.warning("SCK addStreamOutput failed: %s", err)
+            raise CaptureError("захват звука не удался")
         started = threading.Event()
         box = {}
 
@@ -106,7 +107,8 @@ class _SCKCapture:
         self._stream.startCaptureWithCompletionHandler_(done)
         started.wait(5)
         if box.get("error") is not None:
-            raise CaptureError(f"захват звука не удался: {box['error']}")
+            log.warning("SCK start failed: %s", box["error"])
+            raise CaptureError("захват звука не удался")
 
     def stop(self) -> None:
         if self._stream is not None:

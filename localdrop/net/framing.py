@@ -6,7 +6,7 @@ A message is a JSON header plus an optional binary body::
 
 On the wire every message is one encrypted record::
 
-    [u32 ciphertext length][ChaCha20-Poly1305 ciphertext]
+    [u32 ciphertext length][AES-256-GCM ciphertext]
 
 Each direction has its own key; the nonce is a 64-bit record counter.
 """
@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import struct
 
-from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 MAX_RECORD = 16 * 1024 * 1024
 _U32 = struct.Struct(">I")
@@ -49,7 +49,7 @@ class Cipher:
     """One direction of an encrypted channel."""
 
     def __init__(self, key: bytes):
-        self._aead = ChaCha20Poly1305(key)
+        self._aead = AESGCM(key)
         self._n = 0
 
     def _nonce(self) -> bytes:

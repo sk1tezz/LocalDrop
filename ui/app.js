@@ -2,6 +2,12 @@
 'use strict';
 
 const kindIcon = { video: 'movie', folder: 'folder', doc: 'description', archive: 'folder_zip', image: 'image', audio: 'music_note', file: 'draft' };
+const EXT_KIND = { video: 'mp4 mov mkv avi webm m4v wmv', image: 'png jpg jpeg gif webp heic bmp tif tiff svg', audio: 'mp3 wav flac aac ogg m4a opus', archive: 'zip rar 7z tar gz bz2 xz iso dmg', doc: 'pdf doc docx txt xls xlsx ppt pptx odt rtf md csv' };
+function kindOf(name) {
+  const ext = (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
+  for (const k in EXT_KIND) if (EXT_KIND[k].split(' ').includes(ext)) return k;
+  return ext ? 'file' : 'folder';
+}
 
 // ---- derived views --------------------------------------------------------
 function makeView(s, ui) {
@@ -43,7 +49,8 @@ function histView(h, v) {
   const d = v.dev(h.dev), f = FC[h.type] || FC.files;
   return {
     ...h, devName: d.name, color: h.err ? 'var(--bad)' : f[0], tint: h.err ? 'var(--badT)' : f[1],
-    icon: h.err ? 'error' : f[2], subColor: h.err ? 'var(--bad)' : 'var(--tx3)',
+    icon: h.err ? 'error' : (h.type === 'files' ? kindIcon[kindOf(h.title)] : f[2]), subColor: h.err ? 'var(--bad)' : 'var(--tx3)',
+    sub: subText(h.sub),
     dirIcon: h.dir === 'out' ? 'arrow_upward' : 'arrow_downward', time: hhmm(h.ts),
   };
 }
@@ -183,7 +190,6 @@ function Home({ s, ui, setUi, go, v, sendTo }) {
   const last = s.clips[0];
   const targetsOn = (s.settings.audio.targets || []).filter(a => a.on);
   const q = qualityInfo()[s.settings.audio.quality];
-  const target = ui.target && v.dev(ui.target);
   return html`<div style="display:flex;flex-direction:column;gap:22px">
     <${PageHead} title=${greeting()} sub=${t('{0} в сети', npl(v.online.length, 'device')) + ' · ' + t('всё работает напрямую, без облака')}>
       <button onClick=${() => { setUi({ devTab: 'add' }); go('devices'); }} style=${btnGhost} style-hover="background:var(--hover)"><i style="font-size:18px">add</i>${t('Добавить устройство')}</button>
@@ -195,7 +201,7 @@ function Home({ s, ui, setUi, go, v, sendTo }) {
           <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">${t('Файлы')}</div><div style="font-size:12px;color:var(--tx2)">${active.length ? t('{0} в очереди', active.length) + (speed ? ' · ' + fmtRate(speed) : '') : t('Нет активных передач')}</div></div>
           <${IconBtn} icon="arrow_forward" onClick=${() => go('files')} />
         </div>
-        <${DropZone} ui=${ui} setUi=${setUi} height=${84} title=${target ? t('Перетащите файлы для {0}', target.name) : t('Перетащите файлы или папки')} onPick=${() => sendTo('files')} />
+        <${DropZone} ui=${ui} setUi=${setUi} height=${84} title=${t('Перетащите файлы или папки')} onPick=${() => sendTo('files')} />
         ${cur ? html`<div style="display:flex;flex-direction:column;gap:7px">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px"><span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cur.name}</span><span style="font-family:'JetBrains Mono',monospace;color:var(--tx2);flex:none">${cur.pct.toFixed(0)}%</span></div>
           <div style="height:5px;border-radius:3px;background:var(--surf2);overflow:hidden"><div style="height:100%;width:${cur.pct.toFixed(1)}%;background:var(--files);border-radius:3px;transition:width .5s linear"></div></div>

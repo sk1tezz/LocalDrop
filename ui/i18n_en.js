@@ -161,7 +161,6 @@ window.I18N_EN = {
 "Пауза для всех": "Pause all",
 "Передачи файлов, синхронизации буфера и трансляции звука": "File transfers, clipboard syncs and audio streams",
 "Перенос файлов": "File transfer",
-"Перетащите файлы для {0}": "Drop files for {0}",
 "Перетащите файлы или папки": "Drop files or folders",
 "Перетащите файлы или папки на {0}": "Drop files or folders to send to {0}",
 "По IP-адресу": "By IP address",

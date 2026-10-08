@@ -12,7 +12,8 @@ Session keys = HKDF(X25519(eC, eS), salt = H(M1|M2|M3)). Both peers prove
 ownership of their long-term keys over a transcript bound to fresh ephemeral
 keys, so a man in the middle cannot complete the handshake without one of the
 private keys. The short authentication string (6 digits) is derived from the
-same transcript and is used to confirm a first pairing by eye.
+same transcript and is used to confirm a first pairing by eye. Records are
+encrypted with AES-256-GCM (hardware accelerated on x86 and Apple Silicon).
 """
 from __future__ import annotations
 
@@ -119,6 +120,8 @@ def _derive(shared: bytes, transcript: bytes, initiator: bool) -> tuple[bytes, b
 
 
 def _tune(writer: asyncio.StreamWriter) -> None:
+    # let several records queue up before drain() blocks, so the pipe stays full
+    writer.transport.set_write_buffer_limits(high=8 * 1024 * 1024, low=2 * 1024 * 1024)
     sock = writer.get_extra_info("socket")
     if sock is None:
         return

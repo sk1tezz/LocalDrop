@@ -105,8 +105,27 @@ function setLang(l) { LANG = l === 'en' ? 'en' : 'ru'; }
 
 function t(s, ...args) {
   let out = LANG === 'en' ? ((window.I18N_EN || {})[s] ?? s) : s;
-  if (args.length) out = out.replace(/\{(\d)\}/g, (_, i) => args[+i]);
+  if (args.length) out = out.replace(/\{(\d)\}/g, (_, i) => fmtArg(args[+i]));
   return out;
+}
+
+// Arguments sent by the backend: {size: bytes}, {files: n}, {dur: seconds} or text keys.
+function fmtArg(a) {
+  if (a && typeof a === 'object') {
+    if ('size' in a) return fmtSize(a.size);
+    if ('files' in a) return npl(a.files, 'file');
+    if ('dur' in a) return durationText(a.dur);
+    return '';
+  }
+  return typeof a === 'string' ? t(a) : String(a);
+}
+
+// History "sub" lines are stored as {"k": key, "a": [args]} so they follow the UI language.
+function subText(sub) {
+  if (sub && sub[0] === '{') {
+    try { const o = JSON.parse(sub); return t(o.k, ...(o.a || [])); } catch (e) { /* plain text */ }
+  }
+  return t(sub || '');
 }
 
 const PLURALS = {

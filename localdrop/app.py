@@ -89,8 +89,12 @@ class App:
         self.port = int(self.settings.get("port"))
         self.ip = ifaces.pick_ip(self.settings.get("interface"))
         self.me_extra: dict[str, Any] = {}
+        self.pending_request: dict | None = None
 
         self._register_core()
+
+        from .system.single_instance import InstanceServer
+        self.add_service(InstanceServer(self))
 
         from .net.identity import Identity
         from .net.peers import PeerManager
@@ -106,17 +110,37 @@ class App:
         self.discovery = Discovery(self, self.peers)
         self.add_service(self.discovery)
 
+        from .files.transfer import FileService
+        self.files = FileService(self, self.peers)
+        self.add_service(self.files)
+        self.history_handlers["files"] = self._history_files
+
         from .net.pairing import Pairing
         self.pairing = Pairing(self, self.peers)
         self.add_service(self.pairing)
 
     # ---- translation ------------------------------------------------------
     def tr(self, s: str, *args) -> str:
-        if self.settings.get("lang") == "en":
+        en = self.settings.get("lang") == "en"
+        if en:
             s = self.en.get(s, s)
         for i, a in enumerate(args):
-            s = s.replace("{%d}" % i, str(a))
+            s = s.replace("{%d}" % i, self.fmt_arg(a, en))
         return s
+
+    def fmt_arg(self, a: Any, en: bool) -> str:
+        if isinstance(a, dict) and "size" in a:
+            n = float(a["size"])
+            units = ["B", "KB", "MB", "GB"] if en else ["Б", "КБ", "МБ", "ГБ"]
+            i = 0
+            while n >= 1024 and i < 3:
+                n /= 1024
+                i += 1
+            txt = f"{n:.1f}" if i == 3 else f"{n:.0f}"
+            return (txt if en else txt.replace(".", ",")) + " " + units[i]
+        if isinstance(a, dict) and "files" in a:
+            return str(a["files"])
+        return self.tr(a) if isinstance(a, str) else str(a)
 
     # ---- registry ---------------------------------------------------------
     def expose(self, name: str, fn: Callable) -> None:
@@ -209,11 +233,30 @@ class App:
         self.expose("init", self.full_state)
         self.expose("settings", self._api_settings)
         self.expose("win", self._api_win)
+        self.history_handlers: dict[str, Callable] = {}
+        self.add_slice("history", lambda: self.storage.history(500))
+        self.expose("history_clear", self._api_history_clear)
+        self.expose("history_action", self._api_history_action)
         self.expose("jslog", lambda m: logging.getLogger("ui").error("%s", m))
         self.expose("open_logs", lambda: open_path(str(self.ddir / "localdrop.log")))
         self.expose("reveal", lambda p: open_path(p, reveal=True))
         self.expose("open_path", lambda p: open_path(p))
         self.settings.on_change(self._on_settings)
+
+    def _api_history_clear(self) -> None:
+        self.storage.clear_history()
+        self.publish("history")
+
+    def _api_history_action(self, hid: int) -> Any:
+        h = self.storage.history_item(int(hid))
+        if not h:
+            return None
+        fn = self.history_handlers.get(h["type"])
+        if fn is None:
+            return None
+        if inspect.iscoroutinefunction(fn):
+            return asyncio.run_coroutine_threadsafe(fn(h), self.loop).result(60)
+        return fn(h)
 
     def _api_settings(self, changes: dict) -> dict:
         return self.settings.update(changes)
@@ -225,6 +268,15 @@ class App:
             self.publish("me")
         if "device_name" in changes:
             self.publish("me")
+
+    async def _history_files(self, h: dict) -> None:
+        if h["err"]:
+            if not await self.files.retry_from_history(h["ref"]):
+                self.toast("bad", "Повторить нельзя", "Передача уже удалена из очереди")
+        elif h["ref"] and Path(h["ref"]).exists():
+            open_path(h["ref"], reveal=True)
+        else:
+            self.toast("bad", "Файл не найден", "Возможно, его переместили или удалили")
 
     def _api_win(self, action: str) -> None:
         w = self.window
@@ -241,6 +293,14 @@ class App:
                 self._maximized = True
         elif action == "close":
             self.close_window()
+
+    def handle_request(self, req: dict) -> None:
+        """A request forwarded by a second launch (see system.single_instance)."""
+        self.show_window()
+        paths = [p for p in req.get("send") or [] if isinstance(p, str)]
+        if paths:
+            self.emit("navigate", {"screen": "files"})
+            self.emit("dropped", paths)
 
     def close_window(self) -> None:
         if self.tray is not None and self.settings.get("tray"):
@@ -332,6 +392,9 @@ class App:
         )
         self.window_visible = not start_hidden
         self.window.events.closing += self._on_closing
+        if self.pending_request:
+            self.window.events.loaded += lambda: threading.Timer(1.5, self.handle_request,
+                                                                   (self.pending_request,)).start()
         self.window.events.loaded += self._on_loaded
         storage_path = str(self.ddir / "webview")
         webview.start(self._after_start, gui="edgechromium" if IS_WIN else None,

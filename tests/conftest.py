@@ -53,6 +53,18 @@ class FakeApp:
     def spawn(self, coro):
         return asyncio.ensure_future(coro)
 
+    # registry used by services
+    window = None
+
+    def add_slice(self, name, fn):
+        self.__dict__.setdefault("slices", {})[name] = fn
+
+    def expose(self, name, fn):
+        self.__dict__.setdefault("api", {})[name] = fn
+
+    def call_soon(self, fn, *a):
+        asyncio.get_running_loop().call_soon(fn, *a)
+
 
 @pytest.fixture
 def make_app(tmp_path):

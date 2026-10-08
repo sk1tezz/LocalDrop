@@ -4,16 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LocalDrop</title>
-<link rel="stylesheet" href="styles.css">
+<script>
+  // load our files with the page's ?v= version so an updated app never runs cached files
+  (function () {
+    var v = location.search;
+    document.write('<link rel="stylesheet" href="styles.css' + v + '">');
+    ['vendor/react.min.js', 'vendor/react-dom.min.js', 'vendor/htm.umd.js', 'vendor/qrcode.js',
+     'i18n_en.js', 'core.js', 'app.js'].forEach(function (f) {
+      document.write('<script src="' + f + v + '"><\/script>');
+    });
+  })();
+</script>
 </head>
 <body>
 <div id="root"></div>
-<script src="vendor/react.min.js"></script>
-<script src="vendor/react-dom.min.js"></script>
-<script src="vendor/htm.umd.js"></script>
-<script src="vendor/qrcode.js"></script>
-<script src="i18n_en.js"></script>
-<script src="core.js"></script>
-<script src="app.js"></script>
 </body>
 </html>

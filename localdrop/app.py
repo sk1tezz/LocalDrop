@@ -26,6 +26,10 @@ def resource_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def ui_url() -> str:
+    return str(resource_dir() / "ui" / "index.html")
+
+
 def load_en_strings() -> dict[str, str]:
     """English strings shared with the UI (ui/i18n_en.js holds plain JSON)."""
     try:
@@ -118,6 +122,10 @@ class App:
         from .clip.sync import ClipService
         self.clip = ClipService(self, self.peers)
         self.add_service(self.clip)
+
+        from .audio.service import AudioService
+        self.audio = AudioService(self, self.peers)
+        self.add_service(self.audio)
 
         from .net.pairing import Pairing
         self.pairing = Pairing(self, self.peers)
@@ -389,8 +397,10 @@ class App:
         asyncio.run_coroutine_threadsafe(self._start_services(), self.loop).result(30)
 
         dark = self.settings.get("theme") != "light"
+        # local files are tiny: never serve stale UI files from the WebView cache after an update
+        os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-http-cache")
         self.window = webview.create_window(
-            "LocalDrop" + (f" ({self.profile})" if self.profile else ""), url=str(resource_dir() / "ui" / "index.html"), js_api=Bridge(self),
+            "LocalDrop" + (f" ({self.profile})" if self.profile else ""), url=ui_url(), js_api=Bridge(self),
             width=1200, height=780, min_size=(1060, 700), frameless=True, easy_drag=False,
             background_color="#18191B" if dark else "#F6F6F7", hidden=start_hidden,
         )

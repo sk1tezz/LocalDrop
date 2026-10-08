@@ -56,7 +56,7 @@ function histView(h, v) {
   return {
     ...h, devName: d.name, color: h.err ? 'var(--bad)' : f[0], tint: h.err ? 'var(--badT)' : f[1],
     icon: h.err ? 'error' : (h.type === 'files' ? kindIcon[kindOf(h.title)] : f[2]), subColor: h.err ? 'var(--bad)' : 'var(--tx3)',
-    sub: subText(h.sub),
+    sub: subText(h.sub), title: h.type === 'audio' ? t(h.title) : h.title,
     dirIcon: h.dir === 'out' ? 'arrow_upward' : 'arrow_downward', time: hhmm(h.ts),
   };
 }
@@ -180,7 +180,7 @@ function IncomingAudio({ s, v }) {
   if (!inc) return null;
   return html`<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;background:var(--audioT);border:1px solid var(--line2)">
     <div style="width:34px;height:34px;border-radius:8px;background:var(--surf);display:flex;align-items:center;justify-content:center"><i style="color:var(--audio)">speaker</i></div>
-    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${t('Играет звук с {0}', v.dev(inc.dev).name)}</div><div style="font-size:12px;color:var(--tx2)">${inc.out} · ${inc.vol}%</div></div>
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${t('Играет звук с {0}', v.dev(inc.dev).name)}</div><div style="font-size:12px;color:var(--tx2)">${inc.out || t('По умолчанию')} · ${inc.vol}%</div></div>
     <button onClick=${() => api('audio_incoming_stop')} style="height:30px;padding:0 12px;border-radius:7px;background:var(--surf);font-weight:700;font-size:12px" style-hover="background:var(--hover)">${t('Отключить')}</button>
   </div>`;
 }
@@ -476,7 +476,8 @@ function Audio({ s, v }) {
     api('audio_target_changed', dev);
   };
   const qi = qualityInfo();
-  const srcLabel = (au.sources.find(x => x.id === a.source) || {}).label || t('весь звук системы');
+  const src = au.sources.find(x => x.id === a.source);
+  const srcLabel = !src || src.group === 'system' ? t('весь звук системы') : src.label;
   const groups = [['system', t('Система')], ['input', t('Входные устройства')], ['app', t('Приложения')]];
   return html`<div style="display:flex;flex-direction:column;gap:18px">
     <${PageHead} title=${t('Аудио')} sub=${t('Звук этого компьютера — на колонки и наушники других устройств')}>
@@ -497,7 +498,8 @@ function Audio({ s, v }) {
         <div style="padding:14px 16px;border-bottom:1px solid var(--line2);font-size:14px;font-weight:700">${t('Куда выводить звук')}</div>
         ${targets.map(x => {
           const d = v.dev(x.dev), remote = au.remote[x.dev] || {};
-          const outs = remote.outputs && remote.outputs.length ? remote.outputs : [x.out || t('По умолчанию')];
+          const outs = [''].concat(remote.outputs || []);
+          if (x.out && !outs.includes(x.out)) outs.push(x.out);
           return html`<div key=${x.dev} style="padding:14px 16px;border-bottom:1px solid var(--line2);display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;align-items:center;gap:12px">
               <${Toggle} on=${x.on} color="var(--audio)" onClick=${() => upd(x.dev, { on: !x.on })} />
@@ -505,8 +507,8 @@ function Audio({ s, v }) {
               <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${d.name}</div><div style="font-size:11px;color:${remote.error ? 'var(--bad)' : 'var(--tx3)'}">${remote.error || (d.os + (d.online ? (on && x.on && remote.connected ? ' · ' + t('играет') : '') : ' · ' + t('не в сети')))}</div></div>
               <div style="display:flex;align-items:center;gap:6px;height:30px;padding:0 4px 0 8px;border-radius:7px;border:1px solid var(--line);background:var(--surf2)">
                 <i style="font-size:16px;color:var(--tx3)">speaker</i>
-                <select value=${x.out || outs[0]} onChange=${e => upd(x.dev, { out: e.target.value })} style="border:0;background:none;font-size:12px;font-weight:600;cursor:pointer;max-width:170px">
-                  ${outs.map(o => html`<option key=${o} value=${o}>${o}</option>`)}
+                <select value=${x.out || ''} onChange=${e => upd(x.dev, { out: e.target.value })} style="border:0;background:none;font-size:12px;font-weight:600;cursor:pointer;max-width:170px">
+                  ${outs.map(o => html`<option key=${o} value=${o}>${o || t('По умолчанию')}</option>`)}
                 </select>
               </div>
               <${IconBtn} icon="close" title=${t('Убрать')} size=${28} iconSize=${16} danger=${true} onClick=${() => setTargets(targets.filter(y => y.dev !== x.dev))} />
@@ -531,7 +533,7 @@ function Audio({ s, v }) {
             <select value=${a.source} onChange=${e => api('settings', { audio: { source: e.target.value } })} style="flex:1;min-width:0;border:0;background:none;font-size:13px;font-weight:600;cursor:pointer">
               ${groups.map(([g, gl]) => {
                 const items = au.sources.filter(x => x.group === g);
-                return items.length ? html`<optgroup key=${g} label=${gl}>${items.map(x => html`<option key=${x.id} value=${x.id}>${x.label}</option>`)}</optgroup>` : null;
+                return items.length ? html`<optgroup key=${g} label=${gl}>${items.map(x => html`<option key=${x.id} value=${x.id}>${g === 'system' ? t(x.label) : x.label}</option>`)}</optgroup>` : null;
               })}
               ${!au.sources.find(x => x.id === a.source) ? html`<option value=${a.source}>${t('Недоступно')}</option>` : null}
             </select>

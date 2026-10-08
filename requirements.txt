@@ -1,0 +1,33 @@
+# Core
+pywebview>=5.3
+cryptography>=43
+zeroconf>=0.136
+pystray>=0.19
+Pillow>=10.4
+desktop-notifier>=6.0
+
+# Audio
+numpy>=2.1
+sounddevice>=0.5
+av>=13.0
+
+# Pairing by QR (webcam scan)
+opencv-python-headless>=4.10
+
+# Windows
+pywin32>=308; sys_platform == "win32"
+comtypes>=1.4; sys_platform == "win32"
+pycaw>=20240210; sys_platform == "win32"
+PyAudioWPatch>=0.2.12; sys_platform == "win32"
+
+# macOS
+pyobjc-core>=10.3; sys_platform == "darwin"
+pyobjc-framework-Cocoa>=10.3; sys_platform == "darwin"
+pyobjc-framework-ScreenCaptureKit>=10.3; sys_platform == "darwin"
+pyobjc-framework-AVFoundation>=10.3; sys_platform == "darwin"
+pyobjc-framework-CoreMedia>=10.3; sys_platform == "darwin"
+
+# Dev
+pytest>=8.3
+pytest-asyncio>=0.24
+pyinstaller>=6.10

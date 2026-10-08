@@ -250,3 +250,6 @@ cython_debug/
 
 # source font for tools/subset_icons.py (downloaded on demand)
 tools/material-symbols-rounded.woff2
+
+# interface mockup (design reference, not part of the app)
+interface/

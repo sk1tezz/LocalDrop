@@ -12,7 +12,8 @@ hidden = (collect_submodules("zeroconf") + collect_submodules("desktop_notifier"
 a = Analysis(
     [str(ROOT / "main.py")],
     pathex=[str(ROOT)],
-    datas=[(str(ROOT / "ui"), "ui"), (str(ROOT / "localdrop" / "assets"), "localdrop/assets")],
+    datas=[(str(ROOT / "ui"), "ui"), (str(ROOT / "localdrop" / "assets"), "localdrop/assets"),
+           (str(ROOT / "LICENSE"), "."), (str(ROOT / "THIRD_PARTY_LICENSES.md"), ".")],
     hiddenimports=hidden,
     excludes=["tkinter", "pytest", "PyInstaller", "fontTools"],
 )

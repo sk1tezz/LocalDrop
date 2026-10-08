@@ -106,6 +106,10 @@ class App:
         self.discovery = Discovery(self, self.peers)
         self.add_service(self.discovery)
 
+        from .net.pairing import Pairing
+        self.pairing = Pairing(self, self.peers)
+        self.add_service(self.pairing)
+
     # ---- translation ------------------------------------------------------
     def tr(self, s: str, *args) -> str:
         if self.settings.get("lang") == "en":

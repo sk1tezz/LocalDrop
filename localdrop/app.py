@@ -90,6 +90,16 @@ class App:
 
         self._register_core()
 
+        from .net.identity import Identity
+        from .net.peers import PeerManager
+        self.ident = Identity.load_or_create(self.ddir / "identity.pem")
+        self.me_extra["id"] = self.ident.id
+        self.peers = PeerManager(self, self.ident)
+        self.add_service(self.peers)
+        self.add_slice("devices", self.peers.view)
+        self.expose("set_trust", self.peers.set_trust)
+        self.expose("forget", self.peers.forget)
+
     # ---- translation ------------------------------------------------------
     def tr(self, s: str, *args) -> str:
         if self.settings.get("lang") == "en":

@@ -1,6 +1,8 @@
 window.I18N_EN = {
 " из ": " of ",
 "IP-адрес": "IP address",
+"Поиск завершён": "Search finished",
+"Устройств в сети: {0}": "Devices online: {0}",
 "LocalDrop будет готов сразу после входа": "LocalDrop is ready right after you sign in",
 "QR-код": "QR code",
 "{0} активн.": "{0} active",

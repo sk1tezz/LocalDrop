@@ -53,3 +53,10 @@ def same_subnet(a: str, b: str, prefix: int = 24) -> bool:
         return ipaddress.IPv4Interface(f"{a}/{prefix}").network == ipaddress.IPv4Interface(f"{b}/{prefix}").network
     except ValueError:
         return False
+
+
+def broadcast_addr(ip: str, prefix: int) -> str:
+    try:
+        return str(ipaddress.IPv4Interface(f"{ip}/{prefix}").network.broadcast_address)
+    except ValueError:
+        return ""

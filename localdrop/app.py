@@ -66,6 +66,8 @@ class App:
         self.settings = Settings(self.ddir / "settings.json")
         if port:
             self.settings.update({"port": port})
+        if profile and self.settings.get("device_name") == config.default_device_name():
+            self.settings.update({"device_name": f"{config.default_device_name()} ({profile})"})
         self.storage = Storage(self.ddir / "localdrop.sqlite")
         self.storage.prune()
         self.en = load_en_strings()
@@ -99,6 +101,10 @@ class App:
         self.add_slice("devices", self.peers.view)
         self.expose("set_trust", self.peers.set_trust)
         self.expose("forget", self.peers.forget)
+
+        from .net.discovery import Discovery
+        self.discovery = Discovery(self, self.peers)
+        self.add_service(self.discovery)
 
     # ---- translation ------------------------------------------------------
     def tr(self, s: str, *args) -> str:
@@ -316,7 +322,7 @@ class App:
 
         dark = self.settings.get("theme") != "light"
         self.window = webview.create_window(
-            "LocalDrop", url=str(resource_dir() / "ui" / "index.html"), js_api=Bridge(self),
+            "LocalDrop" + (f" ({self.profile})" if self.profile else ""), url=str(resource_dir() / "ui" / "index.html"), js_api=Bridge(self),
             width=1200, height=780, min_size=(1060, 700), frameless=True, easy_drag=False,
             background_color="#18191B" if dark else "#F6F6F7", hidden=start_hidden,
         )

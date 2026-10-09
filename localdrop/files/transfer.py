@@ -10,8 +10,14 @@ Data (a "files" stream connection, hello carries tid)::
 
     receiver -> resume {have: [bytes already stored per item, -1 = complete]}
     sender   -> file {i, offset}, c (body = chunk) ..., end {i, hash}
+    receiver -> prog {n}  (total bytes received, every few MB)
     receiver -> ack {i, ok}
     sender   -> fin;  receiver -> fin_ok
+
+Progress on both sides is what the receiver confirmed with ``prog``; the sender
+keeps at most ``WINDOW`` bytes unconfirmed, so OS buffers never hold hundreds of
+megabytes, and a connection that confirms nothing for ``STALL`` seconds is
+treated as broken (the transfer resumes when the device is back).
 
 Either side can send ``file_ctl {tid, op: pause | resume | cancel}``.
 Partial data lives in ``<target>.ldpart`` until the file's SHA-256 matches.
@@ -37,6 +43,10 @@ from ..net.transport import HandshakeError
 log = logging.getLogger(__name__)
 
 CHUNK = 1024 * 1024
+WINDOW = 16 * 1024 * 1024      # bytes in flight beyond what the receiver confirmed
+PROG_EVERY = 4 * 1024 * 1024   # receiver confirms at least this often...
+PROG_SECONDS = 0.25            # ...or this often
+STALL = 30                     # seconds without any confirmation = broken connection
 PART = ".ldpart"
 FINAL = ("done", "error", "declined", "cancelled")
 NET_ERRORS = (ConnectionError, OSError, asyncio.IncompleteReadError, asyncio.TimeoutError, FrameError,
@@ -157,6 +167,70 @@ def beep() -> None:
             subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"])
     except Exception:
         pass
+
+
+class _Acks:
+    """Messages the receiver sends back on a data stream, read by a background task."""
+
+    def __init__(self, conn, base: int):
+        self.conn = conn
+        self.acked = base
+        self.last = time.monotonic()
+        self.event = asyncio.Event()
+        self.queue: asyncio.Queue = asyncio.Queue()
+        self.error: BaseException | None = None
+        self.on_progress = None
+
+    async def run(self) -> None:
+        try:
+            while True:
+                msg, _ = await self.conn.recv()
+                self.last = time.monotonic()
+                if msg.get("type") == "prog":
+                    self.acked = max(self.acked, int(msg.get("n", 0)))
+                    self.event.set()
+                    if self.on_progress:
+                        self.on_progress(self.acked)
+                else:
+                    self.queue.put_nowait(msg)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:                 # connection closed: wake up whoever waits
+            self.error = e
+            self.event.set()
+            self.queue.put_nowait(None)
+
+    def _check(self) -> None:
+        if self.error is not None:
+            raise ConnectionError(f"stream closed: {self.error!r}")
+        if time.monotonic() - self.last > STALL:
+            raise ConnectionError("the receiver stopped confirming data")
+
+    async def window(self, sent: int) -> None:
+        """Wait until no more than WINDOW bytes are unconfirmed."""
+        while sent - self.acked > WINDOW:
+            self._check()
+            self.event.clear()
+            try:
+                await asyncio.wait_for(self.event.wait(), 1)
+            except asyncio.TimeoutError:
+                pass
+        self._check()
+
+    async def next(self, timeout: float) -> dict:
+        deadline = time.monotonic() + timeout
+        while True:
+            self._check()
+            try:
+                msg = await asyncio.wait_for(self.queue.get(), 1)
+            except asyncio.TimeoutError:
+                if time.monotonic() > deadline:
+                    raise
+                continue
+            if msg is None:
+                self._check()
+                raise ConnectionError("stream closed")
+            return msg
 
 
 class Transfer:
@@ -428,6 +502,23 @@ class FileService:
         t.done = sum(it["size"] if h == -1 else min(h, it["size"]) for it, h in zip(t.items, have))
         t._rate_t, t._rate_b, t.speed = time.time(), t.done, 0
         self._publish(now=True)
+        acks = _Acks(conn, t.done)
+
+        def progress(n: int) -> None:
+            t.done = min(n, t.size)
+            t.rate()
+            self._publish()
+
+        acks.on_progress = progress
+        reader = asyncio.ensure_future(acks.run())
+        try:
+            await self._send_items(t, conn, have, acks)
+        finally:
+            reader.cancel()
+
+    async def _send_items(self, t: Transfer, conn, have: list, acks: _Acks) -> None:
+        loop = asyncio.get_running_loop()
+        pos = t.done                       # bytes handed to the connection, counted like t.done
         for i, (it, h) in enumerate(zip(t.items, have)):
             if h == -1 or it.get("dir"):
                 continue
@@ -452,21 +543,20 @@ class FileService:
                     ahead = sent + len(data)
                     nxt = (loop.run_in_executor(None, _read_hash, f, min(CHUNK, size - ahead), hasher)
                            if ahead < size else None)
+                    await acks.window(pos)
                     await conn.send({"type": "c"}, data)
                     sent = ahead
-                    t.done += len(data)
-                    t.rate()
-                    self._publish()
+                    pos += len(data)
             finally:
                 f.close()
             if sent != it["size"]:
                 raise TransferError("файл изменился во время отправки: {0}", it["rel"])
             await conn.send({"type": "end", "i": i, "hash": hasher.hexdigest()})
-            ack, _ = await asyncio.wait_for(conn.recv(), 60)
+            ack = await acks.next(120)
             if not ack.get("ok"):
                 raise TransferError("контрольная сумма не совпала: {0}", it["rel"])
         await conn.send({"type": "fin"})
-        ack, _ = await asyncio.wait_for(conn.recv(), 30)
+        ack = await acks.next(60)
         if ack.get("type") != "fin_ok":
             raise TransferError("получатель не подтвердил завершение")
         t.done = t.size
@@ -579,9 +669,10 @@ class FileService:
         hasher = None
         pending = None
         cur = -1
+        confirmed, confirmed_at = t.done, time.monotonic()
         try:
             while True:
-                msg, body = await conn.recv()
+                msg, body = await asyncio.wait_for(conn.recv(), STALL * 2)
                 mt = msg.get("type")
                 if mt == "c":
                     if f is None:
@@ -591,6 +682,9 @@ class FileService:
                     # write + hash in a thread while the next record is received and decrypted
                     pending = loop.run_in_executor(None, _write_hash, f, body, hasher)
                     t.done += len(body)
+                    if t.done - confirmed >= PROG_EVERY or time.monotonic() - confirmed_at >= PROG_SECONDS:
+                        confirmed, confirmed_at = t.done, time.monotonic()
+                        await conn.send({"type": "prog", "n": t.done})
                     t.rate()
                     self._publish()
                 elif mt == "file":

@@ -115,7 +115,8 @@ async def test_pause_resume_from_receiver_and_cancel(pair, tmp_path, monkeypatch
     await wait_for(lambda: t2.status == "active" and t2.done > 0)
     await fa.api_cancel(t2.id)
     await wait_for(lambda: fb.transfers[t2.id].status == "cancelled")
-    assert not list(Path(B.settings.get("save_dir")).glob("*" + tr.PART))
+    inbox = Path(B.settings.get("save_dir"))
+    await wait_for(lambda: not list(inbox.glob("*" + tr.PART)))      # deleted once the stream closes the file
 
 
 def test_safe_rel():
@@ -124,3 +125,46 @@ def test_safe_rel():
     assert safe_rel("a/./b/../c").as_posix() == "a/b/c"
     with pytest.raises(tr.TransferError):
         safe_rel("../..")
+
+
+async def test_progress_matches_receiver(pair, tmp_path, monkeypatch):
+    A, B, pa, pb, fa, fb = pair
+    monkeypatch.setattr(tr, "CHUNK", 256 * 1024)
+    big = tmp_path / "p.bin"
+    big.write_bytes(os.urandom(48 * 1024 * 1024))
+    (t,) = await fa.send_paths(B.ident.id, [str(big)])
+    worst = 0
+    while t.status != "done":
+        rt = fb.transfers.get(t.id)
+        if rt is not None and t.status == "active":
+            worst = max(worst, t.done - rt.done)          # sender may never run ahead of what arrived
+        await asyncio.sleep(0.01)
+    assert worst <= 0
+
+
+async def test_stalled_receiver_is_detected_and_resumed(pair, tmp_path, monkeypatch):
+    A, B, pa, pb, fa, fb = pair
+    monkeypatch.setattr(tr, "CHUNK", 256 * 1024)
+    monkeypatch.setattr(tr, "STALL", 2)
+    monkeypatch.setattr(tr, "WINDOW", 2 * 1024 * 1024)
+    big = tmp_path / "s.bin"
+    big.write_bytes(os.urandom(24 * 1024 * 1024))
+    real_write = tr._write_hash
+    frozen = asyncio.Event()
+
+    def slow_write(f, data, hasher):                     # the receiver's disk "hangs"
+        if frozen.is_set():
+            import time as _t
+            _t.sleep(4)
+        real_write(f, data, hasher)
+
+    monkeypatch.setattr(tr, "_write_hash", slow_write)
+    (t,) = await fa.send_paths(B.ident.id, [str(big)])
+    await wait_for(lambda: t.status == "active" and t.done > 4 * 1024 * 1024)
+    frozen.set()
+    await wait_for(lambda: t.status == "offline", timeout=15)
+    stuck = t.done
+    assert stuck <= fb.transfers[t.id].done + tr.WINDOW
+    frozen.clear()
+    await wait_for(lambda: t.status == "done", timeout=40)
+    assert sha(Path(B.settings.get("save_dir")) / "s.bin") == sha(big)

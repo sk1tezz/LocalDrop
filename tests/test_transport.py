@@ -92,3 +92,48 @@ async def test_paired_request_reply_and_streams(make_app):
     assert pb.devices[A.ident.id].trusted is False
     await pa.stop()
     await pb.stop()
+
+
+async def _paired(make_app):
+    A, B, pa, pb = await _pair(make_app)
+    pa.seen(B.ident.id, {"name": "B", "ip": "127.0.0.1", "port": B.port})
+    pb.seen(A.ident.id, {"name": "A", "ip": "127.0.0.1", "port": A.port})
+    pa.set_paired(B.ident.id, trusted=True)
+    pb.set_paired(A.ident.id, trusted=True)
+    for _ in range(200):
+        if pa.connected(B.ident.id) and pb.connected(A.ident.id):
+            break
+        await asyncio.sleep(0.02)
+    return A, B, pa, pb
+
+
+async def test_forget_unpairs_both_sides(make_app):
+    A, B, pa, pb = await _paired(make_app)
+    await pa.forget(B.ident.id)
+    for _ in range(200):
+        if not pb.devices[A.ident.id].paired:
+            break
+        await asyncio.sleep(0.02)
+    assert not pa.devices[B.ident.id].paired and not pb.devices[A.ident.id].paired
+    assert B.storage.device(A.ident.id)["paired"] == 0
+    await pa.stop()
+    await pb.stop()
+
+
+async def test_forget_while_offline_syncs_on_next_connection(make_app):
+    A, B, pa, pb = await _paired(make_app)
+    await pb.stop()                                   # B goes offline
+    await asyncio.sleep(0.1)
+    await pa.forget(B.ident.id)                       # A forgets B; B does not know yet
+    assert pb.devices[A.ident.id].paired
+    pb2 = PeerManager(B, B.ident)                     # B comes back and dials A
+    B.port = pb.app.port
+    await pb2.start()
+    pb2.seen(A.ident.id, {"name": "A", "ip": "127.0.0.1", "port": A.port})
+    for _ in range(300):
+        if not pb2.devices[A.ident.id].paired:
+            break
+        await asyncio.sleep(0.02)
+    assert not pb2.devices[A.ident.id].paired
+    await pa.stop()
+    await pb2.stop()

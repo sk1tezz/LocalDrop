@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 ONLINE_TTL = 35          # seconds a discovery sighting keeps a device "online"
 PING_EVERY = 12
 DEAD_AFTER = 40
-PAIRING_TYPES = {"pair_request", "pair_cancel", "pair_code", "ping", "pong", "reply"}
+PAIRING_TYPES = {"pair_request", "pair_cancel", "pair_code", "unpair", "ping", "pong", "reply"}
 
 Handler = Callable[["Device", Conn, dict, bytes], Awaitable[Any]]
 
@@ -77,6 +77,7 @@ class PeerManager:
                     id=row["id"], name=row["name"], os=row["os"], kind=row["kind"], icon=row["icon"],
                     ip=row["ip"], port=row["port"], paired=True, trusted=bool(row["trusted"]))
         self.on("ping", self._on_ping)
+        self.on("unpair", self._on_unpair)
 
     # ---- lifecycle --------------------------------------------------------
     async def start(self) -> None:
@@ -204,15 +205,46 @@ class PeerManager:
             self._save(d)
             self._changed()
 
-    def forget(self, dev_id: str) -> None:
+    async def forget(self, dev_id: str) -> None:
+        """Unpair on both sides: tell the other device first, then forget it here."""
+        d = self.devices.get(dev_id)
+        if not d:
+            return
+        if d.paired and self.control.get(dev_id):
+            try:
+                await asyncio.wait_for(self.send(dev_id, {"type": "unpair"}), 3)
+            except asyncio.TimeoutError:
+                pass
+        self._forget_local(dev_id)
+
+    def _forget_local(self, dev_id: str) -> None:
         d = self.devices.get(dev_id)
         if not d:
             return
         d.paired = d.trusted = False
         self.app.storage.forget_device(dev_id)
+        self._backoff.pop(dev_id, None)
         for c in self.control.pop(dev_id, []):
             c.close()
         self._changed()
+
+    async def _on_unpair(self, d, conn, msg, body):
+        if d.paired:
+            log.info("%s removed the pairing", d.name)
+            self._forget_local(d.id)
+            self.app.toast("acc", "Сопряжение удалено", "{0} больше не сопряжено с этим ПК", args=(d.name,))
+
+    def _sync_pairing(self, dev_id: str, hello: dict) -> None:
+        """The peer says it does not know us (it forgot us while we were offline): forget it too."""
+        d = self.devices.get(dev_id)
+        if d is not None and d.paired and hello.get("paired") is False:
+            log.info("%s no longer has this device paired", d.name)
+            self._forget_local(dev_id)
+            self.app.toast("acc", "Сопряжение удалено", "{0} больше не сопряжено с этим ПК", args=(d.name,))
+
+    def _paired_flag(self, dev_id: str | None) -> dict:
+        d = self.devices.get(dev_id) if dev_id else None
+        return {"paired": bool(d and d.paired)} if dev_id else {}
 
     # ---- connections ------------------------------------------------------
     def ensure_control(self, dev_id: str) -> asyncio.Task | None:
@@ -248,14 +280,20 @@ class PeerManager:
         if conn.peer_id == self.ident.id:
             conn.close()
             raise PeerError("connected to myself")
-        await conn.send(self.hello(purpose, **extra))
+        await conn.send(self.hello(purpose, **self._paired_flag(conn.peer_id), **extra))
         msg, _ = await asyncio.wait_for(conn.recv(), 8)
         if msg.get("type") != "hello":
             conn.close()
+            if msg.get("error") == "not paired":
+                self._sync_pairing(conn.peer_id, {"paired": False})
             raise PeerError(msg.get("error") or "no hello")
         conn.hello = msg
         self._update(conn.peer_id, {**msg, "ip": ip})
+        self._sync_pairing(conn.peer_id, msg)
         self._changed()
+        if purpose != "control" and not self.devices[conn.peer_id].paired:
+            conn.close()
+            raise PeerError("not paired")
         return conn
 
     async def _on_conn(self, conn: Conn) -> None:
@@ -267,10 +305,11 @@ class PeerManager:
         d = self._update(conn.peer_id, {**msg, "ip": conn.peer_ip})
         if d is None:
             return
+        self._sync_pairing(d.id, msg)
         if purpose != "control" and not d.paired:
             await conn.send({"type": "error", "error": "not paired"})
             return
-        await conn.send(self.hello(purpose))
+        await conn.send(self.hello(purpose, **self._paired_flag(d.id)))
         if purpose == "control":
             await self._run_control(conn)
             return

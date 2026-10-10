@@ -5,6 +5,8 @@ wire compatibility rather than agreement with a copy of the spec.
 
     python desktop/tools/interop_peer.py serve          -> prints "READY <port> <device id>", echoes messages
     python desktop/tools/interop_peer.py dial <port>    -> handshake with a Kotlin server, prints JSON lines
+    python desktop/tools/interop_peer.py node <dir>     -> a whole desktop node (peers, pairing, files, clipboard)
+                                                           driven by python statements on stdin, one per line
 
 Every line on stdout is one JSON object (except READY); the test reads them.
 """
@@ -58,10 +60,55 @@ async def dial(port: int) -> None:
     await conn.wait_closed()
 
 
+async def node(ddir: str) -> None:
+    """Desktop services on a fake app (as in desktop/tests). Each stdin line is evaluated with
+    `p` (PeerManager), `k` (Pairing), `f` (FileService), `c` (ClipService), `app`; awaitables are awaited.
+    The result goes to stdout as {"r": ...}; toasts as {"toast": [...]}."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
+    from conftest import FakeApp  # noqa: E402
+    from localdrop.clip.sync import ClipService
+    from localdrop.files.transfer import FileService
+    from localdrop.net.pairing import Pairing
+    from localdrop.net.peers import PeerManager
+
+    class App(FakeApp):
+        def __init__(self):
+            super().__init__(Path(ddir), "Desktop")
+            self.history_handlers = {}
+            self.api, self.slices = {}, {}
+
+        def toast(self, kind, title, text="", args=(), targs=(), system=True):
+            out({"toast": [kind, title, text, [str(a) for a in args]]})
+
+    app = App()
+    p = PeerManager(app, app.ident)
+    k = Pairing(app, p)
+    f = FileService(app, p)
+    c = ClipService(app, p, backend=None)
+    for svc in (p, k, f):
+        await svc.start()
+    print(f"READY {app.port} {app.ident.id}", flush=True)
+    env = {"p": p, "k": k, "f": f, "c": c, "app": app, "asyncio": asyncio, "json": json}
+    loop = asyncio.get_running_loop()
+    while True:
+        line = await loop.run_in_executor(None, sys.stdin.readline)
+        if not line or line.strip() == "quit":
+            break
+        try:
+            r = eval(compile(line, "<cmd>", "eval"), env)
+            if asyncio.iscoroutine(r) or isinstance(r, asyncio.Future):
+                r = await r
+            out({"r": json.loads(json.dumps(r, default=str))})
+        except Exception as e:  # noqa: BLE001 - reported to the test
+            out({"err": repr(e)})
+
+
 def main() -> None:
     mode = sys.argv[1]
     if mode == "serve":
         asyncio.run(serve())
+    elif mode == "node":
+        asyncio.run(node(sys.argv[2]))
     elif mode == "dial":
         asyncio.run(dial(int(sys.argv[2])))
     else:

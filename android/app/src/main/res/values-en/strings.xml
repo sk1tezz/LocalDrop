@@ -282,4 +282,7 @@
     <string name="qr_manual">Enter the code manually</string>
     <string name="qr_no_camera">No access to the camera</string>
     <string name="qr_bad">That\'s not a LocalDrop QR code</string>
+    <string name="t_unpaired_text">%1$s is no longer paired with this phone</string>
+    <string name="n_running">LocalDrop is running in the background</string>
+    <string name="ch_service">Background service</string>
 </resources>

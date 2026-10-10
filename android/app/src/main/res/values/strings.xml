@@ -291,4 +291,7 @@
     <string name="qr_manual">Ввести код вручную</string>
     <string name="qr_no_camera">Нет доступа к камере</string>
     <string name="qr_bad">Это не QR-код LocalDrop</string>
+    <string name="t_unpaired_text">%1$s больше не сопряжено с этим телефоном</string>
+    <string name="n_running">LocalDrop работает в фоне</string>
+    <string name="ch_service">Работа в фоне</string>
 </resources>

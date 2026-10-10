@@ -1,10 +1,11 @@
-# PyInstaller spec for macOS: python -m PyInstaller packaging/localdrop_mac.spec --noconfirm
+# PyInstaller spec for macOS: python -m PyInstaller desktop/packaging/localdrop_mac.spec --noconfirm
 # Not tested on a Mac yet.
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
 
-ROOT = Path(SPECPATH).parent
+ROOT = Path(SPECPATH).parent          # desktop/
+REPO = ROOT.parent                     # ui/ and licenses are shared at the repo root
 
 hidden = (collect_submodules("zeroconf") + collect_submodules("desktop_notifier")
           + ["pystray._darwin", "webview.platforms.cocoa", "ScreenCaptureKit", "CoreMedia", "dispatch"])
@@ -12,8 +13,8 @@ hidden = (collect_submodules("zeroconf") + collect_submodules("desktop_notifier"
 a = Analysis(
     [str(ROOT / "main.py")],
     pathex=[str(ROOT)],
-    datas=[(str(ROOT / "ui"), "ui"), (str(ROOT / "localdrop" / "assets"), "localdrop/assets"),
-           (str(ROOT / "LICENSE"), "."), (str(ROOT / "THIRD_PARTY_LICENSES.md"), ".")],
+    datas=[(str(REPO / "ui"), "ui"), (str(ROOT / "localdrop" / "assets"), "localdrop/assets"),
+           (str(REPO / "LICENSE"), "."), (str(REPO / "THIRD_PARTY_LICENSES.md"), ".")],
     hiddenimports=hidden,
     excludes=["tkinter", "pytest", "PyInstaller", "fontTools"],
 )

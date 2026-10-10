@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 def resource_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parents[2]     # repo root: ui/ is shared with Android
 
 
 def ui_url() -> str:

@@ -243,13 +243,27 @@ cython_debug/
 
 
 # LocalDrop
-!packaging/*.spec
+!desktop/packaging/*.spec
 
 # IDE
 .idea/
 
-# source font for tools/subset_icons.py (downloaded on demand)
-tools/material-symbols-rounded.woff2
+# source font for desktop/tools/subset_icons.py (downloaded on demand)
+desktop/tools/material-symbols-rounded.woff2
 
 # interface mockup (design reference, not part of the app)
 interface/
+
+# Android (android/ is an Android Studio project)
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/**/.cxx/
+android/.externalNativeBuild/
+android/captures/
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties

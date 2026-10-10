@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+UI = ROOT.parent / "ui"
 CYR = re.compile("[А-Яа-яЁё]")
 # fragments assembled elsewhere (units, plural forms, parts of keys)
 SKIP = {"Б", "КБ", "МБ", "ГБ", "устройство", "устройства", "устройств", "отправлено", "получено",
@@ -11,9 +12,9 @@ SKIP = {"Б", "КБ", "МБ", "ГБ", "устройство", "устройст�
 
 
 def main() -> int:
-    s = (ROOT / "ui" / "i18n_en.js").read_text("utf-8")
+    s = (UI / "i18n_en.js").read_text("utf-8")
     en = json.loads(s[s.index("{"): s.rindex("}") + 1])
-    js = "".join((ROOT / "ui" / f).read_text("utf-8") for f in ("app.js", "core.js"))
+    js = "".join((UI / f).read_text("utf-8") for f in ("app.js", "core.js"))
     ui_keys = set(re.findall(r"\bt\('((?:[^'\\]|\\.)*)'", js))
     py = "".join(p.read_text("utf-8") for p in (ROOT / "localdrop").rglob("*.py"))
     py_keys = {m.group(1) for m in re.finditer(r'"((?:[^"\\\n]|\\.)*)"', py) if CYR.search(m.group(1))}

@@ -23,10 +23,12 @@ Windows 10/11 и macOS 13+.
 
 Нужен Python 3.12+ (проверено на 3.14).
 
+Команды выполняются из корня репозитория.
+
 ```
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt      # macOS: .venv/bin/pip
-.venv\Scripts\python main.py
+.venv\Scripts\pip install -r desktop\requirements.txt      # macOS: .venv/bin/pip
+.venv\Scripts\python desktop\main.py
 ```
 
 Параметры:
@@ -42,15 +44,15 @@ python -m venv .venv
 Два экземпляра на одном компьютере:
 
 ```
-.venv\Scripts\python main.py --profile A
-.venv\Scripts\python main.py --profile B --port 53318
+.venv\Scripts\python desktop\main.py --profile A
+.venv\Scripts\python desktop\main.py --profile B --port 53318
 ```
 
 ## Сборка
 
-- Windows: `powershell -ExecutionPolicy Bypass -File packaging\build_win.ps1` →
-  `dist\LocalDrop\LocalDrop.exe` (папка целиком, около 270 МБ).
-- macOS: `sh packaging/build_mac.sh` → `dist/LocalDrop.app`. **Не проверялось на Mac.**
+- Windows: `powershell -ExecutionPolicy Bypass -File desktop\packaging\build_win.ps1` →
+  `desktop\dist\LocalDrop\LocalDrop.exe` (папка целиком, около 270 МБ).
+- macOS: `sh desktop/packaging/build_mac.sh` → `desktop/dist/LocalDrop.app`. **Не проверялось на Mac.**
 
 ## Сеть и брандмауэр
 
@@ -90,15 +92,18 @@ python -m venv .venv
 ## Разработка
 
 ```
-.venv\Scripts\python -m pytest            # тесты (32)
-.venv\Scripts\python tools\check_i18n.py   # строки без английского перевода
-.venv\Scripts\python tools\subset_icons.py # пересобрать шрифт иконок после новой иконки
+.venv\Scripts\python -m pytest desktop            # тесты (32)
+.venv\Scripts\python desktop\tools\check_i18n.py   # строки без английского перевода
+.venv\Scripts\python desktop\tools\subset_icons.py # пересобрать шрифт иконок после новой иконки
 ```
 
-Структура: `localdrop/net` — личность, шифрованный транспорт, обнаружение, сопряжение;
+Репозиторий: `desktop/` — приложение для Windows и macOS (Python), `android/` — приложение для
+Android (Kotlin, в разработке), `ui/` — общий интерфейс.
+
+Структура `desktop/`: `localdrop/net` — личность, шифрованный транспорт, обнаружение, сопряжение;
 `localdrop/files` — передача файлов; `localdrop/clip` — буфер обмена; `localdrop/audio` — захват,
 кодек, синхронный поток; `localdrop/system` — трей, уведомления, автозапуск, меню Проводника;
-`ui/` — интерфейс (React + htm без сборки, всё локально).
+интерфейс в `ui/` (React + htm без сборки, всё локально).
 
 ## Лицензия
 

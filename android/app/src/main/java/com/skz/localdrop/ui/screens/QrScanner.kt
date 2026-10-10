@@ -36,6 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -110,27 +117,39 @@ fun QrScanner(onClose: () -> Unit) {
     }
 }
 
-/** Rounded corner brackets and a scan line, 250dp square. */
+/** Rounded corner brackets with a breathing glow and a scan line sweeping up and down, 250dp square. */
 @Composable
 private fun Frame(acc: Color) {
+    val t = rememberInfiniteTransition(label = "scan")
+    val y by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "line")
+    val pulse by t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "corners")
     Canvas(Modifier.size(250.dp)) {
         val r = 24.dp.toPx()
         val len = 44.dp.toPx()
         val w = 4.dp.toPx()
-        drawRoundRect(Color.Black.copy(alpha = 0.25f), cornerRadius = CornerRadius(r))
         val s = size.width
-        fun corner(x: Float, y: Float, dx: Float, dy: Float) {
+        drawRoundRect(Color.Black.copy(alpha = 0.25f), cornerRadius = CornerRadius(r))
+        fun corner(x: Float, yy: Float, dx: Float, dy: Float) {
             val p = Path().apply {
-                moveTo(x, y + dy * len)
-                lineTo(x, y + dy * r)
-                quadraticTo(x, y, x + dx * r, y)
-                lineTo(x + dx * len, y)
+                moveTo(x, yy + dy * len)
+                lineTo(x, yy + dy * r)
+                quadraticTo(x, yy, x + dx * r, yy)
+                lineTo(x + dx * len, yy)
             }
-            drawPath(p, acc, style = Stroke(w, cap = StrokeCap.Round))
+            drawPath(p, acc.copy(alpha = pulse), style = Stroke(w, cap = StrokeCap.Round))
         }
         val h = w / 2
         corner(h, h, 1f, 1f); corner(s - h, h, -1f, 1f); corner(h, s - h, 1f, -1f); corner(s - h, s - h, -1f, -1f)
-        drawRoundRect(acc, Offset(r, s / 2 - 1.dp.toPx()), Size(s - 2 * r, 2.dp.toPx()), CornerRadius(1.dp.toPx()))
+        // the scan line with a soft trail
+        val top = r
+        val bottom = s - r
+        val ly = top + (bottom - top) * y
+        val glow = 36.dp.toPx()
+        drawRect(
+            Brush.verticalGradient(listOf(Color.Transparent, acc.copy(alpha = 0.22f), Color.Transparent), ly - glow, ly + glow),
+            Offset(r, ly - glow), Size(s - 2 * r, glow * 2),
+        )
+        drawRoundRect(acc, Offset(r, ly - 1.dp.toPx()), Size(s - 2 * r, 2.dp.toPx()), CornerRadius(1.dp.toPx()))
     }
 }
 

@@ -176,12 +176,6 @@
     <string name="sound_source">Источник звука</string>
     <string name="no_audio_sources">Нет доверенных компьютеров в сети</string>
     <string name="vol_out">Громкость и вывод</string>
-    <string name="what_stream">Что транслировать</string>
-    <string name="src_system">Весь звук телефона</string>
-    <string name="src_system_sub">Музыка, видео, игры</string>
-    <string name="src_mic">Микрофон</string>
-    <string name="src_mic_sub">Голос и звук вокруг</string>
-    <string name="src_mic_perm">Потребуется разрешение</string>
     <string name="where">Куда</string>
     <string name="add_device">Добавить устройство</string>
     <string name="quality">Качество</string>
@@ -241,7 +235,7 @@
     <string name="perm_battery">Работа в фоне</string>
     <string name="perm_battery_sub">Приём файлов при выключенном экране</string>
     <string name="perm_mic">Микрофон</string>
-    <string name="perm_mic_sub">Для трансляции голоса — необязательно</string>
+    <string name="perm_mic_sub">Android требует его для захвата звука телефона</string>
     <string name="perm_camera">Камера</string>
     <string name="perm_camera_sub">Чтобы сканировать QR-код компьютера</string>
     <string name="allow">Разрешить</string>
@@ -378,4 +372,7 @@
     <string name="tile_label">LocalDrop</string>
     <string name="tile_sub_short">Отправить буфер</string>
     <string name="w_online">%1$d в сети</string>
+    <string name="a_no_packets">Звук не доходит до телефона. Разрешите LocalDrop в брандмауэре Windows для частной сети</string>
+    <string name="a_no_sync">Компьютер не отвечает на синхронизацию — играет без точной синхронизации комнат</string>
+    <string name="e_audio_not_started">компьютер не начал трансляцию</string>
 </resources>

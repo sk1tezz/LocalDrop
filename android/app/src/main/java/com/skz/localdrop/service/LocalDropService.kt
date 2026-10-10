@@ -57,7 +57,6 @@ class LocalDropService : Service() {
         var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         if (playing) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
         if (projecting) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        if (recording) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         runCatching { ServiceCompat.startForeground(this, Notifications.ID_SERVICE, build(online), types) }
             .onFailure { android.util.Log.w(com.skz.localdrop.core.TAG, "foreground types $types refused", it) }
     }
@@ -88,7 +87,6 @@ class LocalDropService : Service() {
         @Volatile private var instance: LocalDropService? = null
         @Volatile private var playing = false
         @Volatile var projecting = false
-        @Volatile var recording = false
 
         fun playing(ctx: Context, on: Boolean) {
             playing = on

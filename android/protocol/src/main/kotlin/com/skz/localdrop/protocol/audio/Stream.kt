@@ -199,6 +199,15 @@ class Receiver(
     @Volatile var packets = 0L
     @Volatile var bytes = 0L
     @Volatile var codec = 0
+    @Volatile var syncReplies = 0L
+    /**
+     * When no clock replies come back (a firewall dropping UDP to the sender), the offset is
+     * estimated from arrival times: sender time of a packet minus when it arrived, the largest
+     * value (the fastest packet) being the closest to the truth. Playback works, only the
+     * room-to-room sync is a few milliseconds looser.
+     */
+    @Volatile private var arrivalOffset: Long? = null
+    private val created = System.currentTimeMillis()
     @Volatile private var stopped = false
     private val threads = listOf(Thread(::recvLoop, "audio-recv"), Thread(::pingLoop, "audio-ping"))
 
@@ -235,11 +244,16 @@ class Receiver(
             if (type == T_SYNC_RESP && plain.size == 16) {
                 val b = ByteBuffer.wrap(plain)
                 clock.add(b.long, b.long, nowNs())
+                syncReplies++
             } else if (type == T_AUDIO && plain.size > 17) {
+                val arrived = nowNs()
                 val b = ByteBuffer.wrap(plain)
                 val idx = b.long
                 val st0 = b.long
                 val c = b.get().toInt()
+                val est = st0 + idx * NS / RATE - arrived
+                val prev = arrivalOffset
+                arrivalOffset = if (prev == null || t0 != st0) est else maxOf(prev, est)
                 val dec = decs[c] ?: decoders(c)?.also { decs[c] = it } ?: continue
                 synchronized(this) {
                     if (t0 != st0) {          // the sender (re)started its timeline
@@ -258,11 +272,18 @@ class Receiver(
         }
     }
 
-    val ready get() = t0 != null && clock.offset != null
+    /** The clock offset in use: from pings, or (after 1.5 s without replies) from arrival times. */
+    private val offset: Long?
+        get() = clock.offset ?: arrivalOffset?.takeIf { packets > 20 && System.currentTimeMillis() - created > 1500 }
+
+    val ready get() = t0 != null && offset != null
+
+    /** True while playing on the arrival-time estimate (no clock replies from the sender). */
+    val estimatedClock get() = clock.offset == null && ready
 
     /** Sample index that should be heard at local time [playLocalNs]. */
     private fun targetIndex(playLocalNs: Long): Double {
-        val senderTime = playLocalNs + clock.offset!! - delayNs
+        val senderTime = playLocalNs + offset!! - delayNs
         return (senderTime - t0!!).toDouble() * RATE / NS
     }
 

@@ -93,7 +93,7 @@ data class HistoryItem(
 data class RemoteAudio(val outputs: List<String> = emptyList(), val connected: Boolean = false, val error: String = "")
 
 /** Audio playing here from another device. */
-data class IncomingAudio(val dev: String, val vol: Int, val out: String, val connected: Boolean, val bitrate: String = "")
+data class IncomingAudio(val dev: String, val vol: Int, val out: String, val connected: Boolean, val bitrate: String = "", val note: String = "")
 
 data class AudioState(
     val on: Boolean = false,                    // this phone is streaming
@@ -151,7 +151,7 @@ data class AppSettings(
     val clipDevices: List<String> = emptyList(),
     val clipText: Boolean = true,
     val clipImage: Boolean = true,
-    val audioSource: String = "system",       // system | mic
+    val audioSource: String = "system",       // system (the phone's sound); kept for the settings file
     val audioQuality: String = "balance",     // low | balance | hq
     val audioBuffer: Int = 60,
     val audioMuteLocal: Boolean = false,

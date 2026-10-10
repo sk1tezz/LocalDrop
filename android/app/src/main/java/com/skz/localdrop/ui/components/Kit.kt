@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -364,14 +365,17 @@ fun Input(
 @Composable
 fun Slider(value: Int, onChange: (Int) -> Unit, color: Color = Ld.c.audio, modifier: Modifier = Modifier, onDone: (() -> Unit)? = null) {
     var width by remember { mutableFloatStateOf(1f) }
+    // the gesture handlers live across recompositions: always call the current callbacks
+    val change by rememberUpdatedState(onChange)
+    val done by rememberUpdatedState(onDone)
     val track = Ld.c.surf2
     val line = Ld.c.line
     fun at(x: Float) = ((x / width) * 100).toInt().coerceIn(0, 100)
     Canvas(
         modifier.height(28.dp).onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
-            .pointerInput(Unit) { detectTapGestures { onChange(at(it.x)); onDone?.invoke() } }
+            .pointerInput(Unit) { detectTapGestures { change(at(it.x)); done?.invoke() } }
             .pointerInput(Unit) {
-                detectDragGestures(onDragEnd = { onDone?.invoke() }) { change, _ -> onChange(at(change.position.x)) }
+                detectDragGestures(onDragEnd = { done?.invoke() }, onDragCancel = { done?.invoke() }) { c, _ -> change(at(c.position.x)) }
             }
     ) {
         val h = 4.dp.toPx()

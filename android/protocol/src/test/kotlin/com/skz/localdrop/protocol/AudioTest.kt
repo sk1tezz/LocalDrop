@@ -29,6 +29,8 @@ class AudioTest {
     private fun str(e: kotlinx.serialization.json.JsonElement) = (e as JsonPrimitive).content
     private val keys = AudioKeys("11".repeat(32), "a1b2c3d4", "22".repeat(32), "01020304")
     private val st = "__import__('localdrop.audio.stream', fromlist=['x'])"
+    // a sine "capture" that follows the clock like a real one (sleep-paced loops fall behind)
+    private val FEEDER = "!exec(\"def feed():\\n  n=0; t0=time.perf_counter()\\n  while not stop.is_set():\\n    while n < (time.perf_counter()-t0)*48000+960:\\n      snd.on_audio(np.stack([0.5*np.sin(2*np.pi*440*(n+np.arange(480))/48000)]*2,1).astype(np.float32), 48000); n+=480\\n    time.sleep(0.005)\\nthreading.Thread(target=feed, daemon=True).start()\", globals())"
     private val pyKeys = "{'k_audio': '${keys.kAudio}', 's_audio': '${keys.sAudio}', 'k_sync': '${keys.kSync}', 's_sync': '${keys.sSync}'}"
 
     private fun waitFor(timeoutMs: Long = 10_000, cond: () -> Boolean) {
@@ -65,7 +67,7 @@ class AudioTest {
             py.cmd("!import threading, time, numpy as np")
             py.cmd("!snd = $st.Sender('hq'); snd.start()")
             py.cmd("!stop = threading.Event()")
-            py.cmd("!threading.Thread(target=lambda: [ (snd.on_audio(np.stack([0.5*np.sin(2*np.pi*440*(n*480+np.arange(480))/48000)]*2,1).astype(np.float32), 48000), time.sleep(0.01)) for n in range(100000) if not stop.is_set()], daemon=True).start()")
+            py.cmd(FEEDER)
             val port = str(py.cmd("snd.port")).toInt()
             val rec = Receiver(keys, InetSocketAddress("127.0.0.1", port), 60, 100) { c -> if (c == CODEC_PCM) Pcm else null }
             rec.start()
@@ -75,6 +77,31 @@ class AudioTest {
             rec.render(4800, nowNs(), out)
             assertTrue("rms ${rms(out)}", rms(out) in 0.25f..0.45f)       // a 0.5 sine has rms 0.354
             assertTrue(rec.clock.rtt < 50_000_000)
+            py.cmd("!stop.set(); snd.stop()")
+            rec.stop()
+        }
+    }
+
+    /** Clock pings lost (e.g. a firewall on the computer): the receiver still plays. */
+    @Test
+    fun playsWithoutClockReplies() {
+        val (py, _, _) = pyNode(tmp.newFolder("desk"))
+        py.use {
+            py.cmd("!import threading, time, numpy as np")
+            py.cmd("!snd = $st.Sender('hq'); snd.start()")
+            py.cmd("!stop = threading.Event()")
+            py.cmd(FEEDER)
+            val port = str(py.cmd("snd.port")).toInt()
+            // pings go to a port nobody answers on
+            val rec = Receiver(keys, InetSocketAddress("127.0.0.1", port + 1), 60, 100) { c -> if (c == CODEC_PCM) Pcm else null }
+            rec.start()
+            py.cmd("snd.add_target('phone', ('127.0.0.1', ${rec.port}), $pyKeys)")
+            waitFor { rec.ready && rec.packets > 200 }
+            assertTrue(rec.estimatedClock)
+            assertEquals(0L, rec.syncReplies)
+            val out = FloatArray(4800 * 2)
+            rec.render(4800, nowNs(), out)
+            assertTrue("rms ${rms(out)}", rms(out) in 0.25f..0.45f)
             py.cmd("!stop.set(); snd.stop()")
             rec.stop()
         }

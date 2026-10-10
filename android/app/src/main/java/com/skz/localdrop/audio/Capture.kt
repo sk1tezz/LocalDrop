@@ -5,14 +5,12 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
-import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import com.skz.localdrop.protocol.audio.RATE
 
 /**
- * Captures 48 kHz stereo and hands interleaved floats to [onAudio] in 10 ms chunks.
- * System sound comes from AudioPlaybackCapture (apps that allow it; calls never), the
- * microphone from AudioRecord.
+ * Captures the phone's sound (AudioPlaybackCapture: apps that allow it, never calls) at 48 kHz
+ * stereo and hands interleaved floats to [onAudio] in 10 ms chunks.
  */
 class Capture private constructor(private val record: AudioRecord, private val projection: MediaProjection?, private val onAudio: (FloatArray) -> Unit) {
     @Volatile private var stopped = false
@@ -60,12 +58,6 @@ class Capture private constructor(private val record: AudioRecord, private val p
                 .build()
             val rec = AudioRecord.Builder().setAudioFormat(FORMAT).setBufferSizeInBytes(bufSize()).setAudioPlaybackCaptureConfig(cfg).build()
             return Capture(rec, projection, onAudio)
-        }
-
-        @SuppressLint("MissingPermission")
-        fun mic(onAudio: (FloatArray) -> Unit): Capture {
-            val rec = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.MIC).setAudioFormat(FORMAT).setBufferSizeInBytes(bufSize()).build()
-            return Capture(rec, null, onAudio)
         }
     }
 }

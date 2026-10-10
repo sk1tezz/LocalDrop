@@ -104,7 +104,7 @@ class AudioGlue(private val core: Core) {
                 }
                 if (inc != null) {
                     core.publish()                       // bitrate and connection state
-                    Log.d(TAG, "audio in: packets=${inc.rec.packets} ready=${inc.rec.ready} rtt=${inc.rec.clock.rtt / 1000} us codec=${inc.rec.codec}")
+                    Log.d(TAG, "audio in: packets=${inc.rec.packets} syncReplies=${inc.rec.syncReplies} ready=${inc.rec.ready} estimated=${inc.rec.estimatedClock} rtt=${inc.rec.clock.rtt / 1000} us codec=${inc.rec.codec}")
                 }
             }
         }
@@ -129,16 +129,27 @@ class AudioGlue(private val core: Core) {
             error = error,
             remote = rem,
             latency = if (on) core.settings.value.audioBuffer + EXTRA_LATENCY_MS else inc?.let { (it.rec.delayNs / 1_000_000).toInt() + 30 } ?: 0,
-            incoming = inc?.let { IncomingAudio(it.dev, it.vol, it.out.ifEmpty { localOut }, it.rec.ready, bitrate) },
+            incoming = inc?.let { IncomingAudio(it.dev, it.vol, it.out.ifEmpty { localOut }, it.rec.ready, bitrate, note(it)) },
             listening = listening,
             outputs = Outputs.list(ctx).map { (name, d) -> AudioOutput(name, name, Outputs.type(d)) },
         )
     }
 
+    /** Why nothing is heard, when we can tell. */
+    private fun note(inc: Incoming): String {
+        val secs = (System.currentTimeMillis() - inc.started) / 1000
+        return when {
+            inc.rec.packets == 0L && secs >= 4 -> core.str(R.string.a_no_packets)
+            inc.rec.estimatedClock && secs >= 4 -> core.str(R.string.a_no_sync)
+            else -> ""
+        }
+    }
+
     // ---- receiving --------------------------------------------------------
     private suspend fun onStart(d: PeerDevice, conn: Conn, msg: Msg): Reply {
-        if (!core.settings.value.featAudio) return fail("disabled")
-        if (!d.trusted) return fail("not trusted")
+        val asked = listening == d.id
+        if (!core.settings.value.featAudio && !asked) return fail("disabled")
+        if (!d.trusted && !asked) return fail("not trusted")
         val k = msg.header["keys"] as? kotlinx.serialization.json.JsonObject ?: return fail("bad request")
         val keys = AudioKeys(k.str("k_audio") ?: return fail("bad request"), k.str("s_audio") ?: "", k.str("k_sync") ?: "", k.str("s_sync") ?: "")
         val port = msg.header.int("port") ?: return fail("bad request")
@@ -239,6 +250,13 @@ class AudioGlue(private val core: Core) {
                 })
                 core.toast("bad", R.string.t_audio_failed, if (e != null && e !in setOf("not trusted", "disabled")) "$text: $e" else text)
                 core.publish()
+                return@launch
+            }
+            delay(8000)
+            if (listening == dev && incoming == null) {
+                listening = ""
+                core.toast("bad", R.string.t_audio_failed, core.str(R.string.e_audio_not_started))
+                core.publish()
             }
         }
     }
@@ -281,7 +299,7 @@ class AudioGlue(private val core: Core) {
     }
 
     // ---- sending ----------------------------------------------------------
-    /** The UI switch. Needs the microphone permission (Android requires it for playback capture too) and, for system sound, the capture consent. */
+    /** The UI switch. Needs the microphone permission (Android requires it for playback capture) and the capture consent. */
     fun toggle() {
         if (on) {
             on = false
@@ -294,7 +312,7 @@ class AudioGlue(private val core: Core) {
             return
         }
         if (!core.settings.value.featAudio) core.settings.update { it.copy(featAudio = true) }
-        if (core.settings.value.audioSource == "system" && projection == null) {
+        if (projection == null) {
             core.events.tryEmit(UiEvent.CaptureConsent)
             return
         }
@@ -331,7 +349,7 @@ class AudioGlue(private val core: Core) {
         p.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
                 projection = null
-                if (core.settings.value.audioSource == "system" && on) {
+                if (on) {
                     on = false
                     core.scope.launch { reconcile() }
                 }
@@ -397,14 +415,8 @@ class AudioGlue(private val core: Core) {
         capture = null
         val snd = sender ?: Sender(encoderFor(quality)).also { it.start(); sender = it; currentQuality = quality }
         try {
-            val cap = if (source == "mic") {
-                LocalDropService.recording = true
-                LocalDropService.update()
-                Capture.mic { snd.push(it) }
-            } else {
-                val p = projection ?: throw IllegalStateException(core.str(R.string.e_projection))
-                Capture.system(p) { snd.push(it) }
-            }
+            val p = projection ?: throw IllegalStateException(core.str(R.string.e_projection))
+            val cap = Capture.system(p) { snd.push(it) }
             cap.start()
             capture = cap
             captureKey = key
@@ -464,9 +476,8 @@ class AudioGlue(private val core: Core) {
         currentQuality = ""
         projection?.let { runCatching { it.stop() } }
         projection = null
-        if (LocalDropService.projecting || LocalDropService.recording) {
+        if (LocalDropService.projecting) {
             LocalDropService.projecting = false
-            LocalDropService.recording = false
             LocalDropService.update()
         }
     }

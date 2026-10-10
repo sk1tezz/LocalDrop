@@ -14,6 +14,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -191,9 +200,9 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
                 }
                 val sheetDev = nav.sheet?.let { s.device(it) }
                 DeviceSheet(sheetDev, s) { nav.sheet = null }
-                PairSheet(s.pair)
                 if (nav.qr) QrScanner { nav.qr = false }
                 if (nav.onboarding >= 0) Onboarding(s)
+                PairSheet(s.pair)                         // above onboarding: "Connect" there opens it
                 ToastHost(toasts) { id -> toasts.removeAll { it.first == id } }
             }
         }
@@ -270,7 +279,7 @@ private fun ToastHost(toasts: List<Pair<Long, Toast>>, remove: (Long) -> Unit) {
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 10.dp, end = 10.dp, top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for ((id, t) in toasts) {
             LaunchedEffect(id) { delay(4000); remove(id) }
-            key(id) { ToastCard(t) { remove(id) } }
+            key(id) { ToastCard(t, onClick = { remove(id) }, onDismiss = { remove(id) }) }
         }
     }
 }
@@ -279,7 +288,7 @@ private fun ToastHost(toasts: List<Pair<Long, Toast>>, remove: (Long) -> Unit) {
 private fun key(id: Long, content: @Composable () -> Unit) = androidx.compose.runtime.key(id) { content() }
 
 @Composable
-private fun ToastCard(t: Toast, onClick: () -> Unit) {
+private fun ToastCard(t: Toast, onClick: () -> Unit, onDismiss: () -> Unit) {
     val c = Ld.c
     val (color, tint, icon) = when (t.kind) {
         "files" -> Triple(c.files, c.filesT, "folder_open")
@@ -291,10 +300,51 @@ private fun ToastCard(t: Toast, onClick: () -> Unit) {
     }
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
+    // swipe sideways or up to dismiss; a short swipe springs back
+    val dx = remember { Animatable(0f) }
+    val dy = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val far = with(LocalDensity.current) { 110.dp.toPx() }
+    val up = with(LocalDensity.current) { 36.dp.toPx() }
+    val swipe = Modifier
+        .graphicsLayer {
+            translationX = dx.value
+            translationY = dy.value
+            alpha = 1f - (kotlin.math.abs(dx.value) / (far * 2.2f)).coerceIn(0f, 0.7f) - (-dy.value / (up * 4)).coerceIn(0f, 0.7f)
+        }
+        .pointerInput(Unit) {
+            detectDragGestures(
+                onDragEnd = {
+                    scope.launch {
+                        when {
+                            kotlin.math.abs(dx.value) > far -> {
+                                dx.animateTo(if (dx.value > 0) size.width * 1.2f else -size.width * 1.2f, tween(160))
+                                onDismiss()
+                            }
+                            dy.value < -up -> {
+                                dy.animateTo(-size.height * 2f, tween(160))
+                                onDismiss()
+                            }
+                            else -> {
+                                launch { dx.animateTo(0f, spring()) }
+                                dy.animateTo(0f, spring())
+                            }
+                        }
+                    }
+                },
+                onDragCancel = { scope.launch { dx.animateTo(0f); dy.animateTo(0f) } },
+            ) { change, d ->
+                change.consume()
+                scope.launch {
+                    dx.snapTo(dx.value + d.x)
+                    dy.snapTo((dy.value + d.y).coerceAtMost(0f))
+                }
+            }
+        }
     AnimatedVisibility(shown, enter = slideInVertically { -it } + fadeIn(), exit = slideOutVertically { -it } + fadeOut()) {
         val shape = RoundedCornerShape(22.dp)
         Row(
-            Modifier.fillMaxWidth().shadow(16.dp, shape).clip(shape).background(c.surf).border(1.dp, c.line2, shape)
+            swipe.fillMaxWidth().shadow(16.dp, shape).clip(shape).background(c.surf).border(1.dp, c.line2, shape)
                 .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

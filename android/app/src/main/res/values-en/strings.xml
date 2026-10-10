@@ -169,12 +169,6 @@
     <string name="sound_source">Sound source</string>
     <string name="no_audio_sources">No trusted computers online</string>
     <string name="vol_out">Volume and output</string>
-    <string name="what_stream">What to stream</string>
-    <string name="src_system">All phone sound</string>
-    <string name="src_system_sub">Music, video, games</string>
-    <string name="src_mic">Microphone</string>
-    <string name="src_mic_sub">Voice and the sound around</string>
-    <string name="src_mic_perm">Needs permission</string>
     <string name="where">Where</string>
     <string name="add_device">Add a device</string>
     <string name="quality">Quality</string>
@@ -234,7 +228,7 @@
     <string name="perm_battery">Background work</string>
     <string name="perm_battery_sub">Receive files with the screen off</string>
     <string name="perm_mic">Microphone</string>
-    <string name="perm_mic_sub">To stream your voice, optional</string>
+    <string name="perm_mic_sub">Android needs it to capture the phone\'s sound</string>
     <string name="perm_camera">Camera</string>
     <string name="perm_camera_sub">To scan the computer\'s QR code</string>
     <string name="allow">Allow</string>
@@ -369,4 +363,7 @@
     <string name="tile_label">LocalDrop</string>
     <string name="tile_sub_short">Send clipboard</string>
     <string name="w_online">%1$d online</string>
+    <string name="a_no_packets">No sound reaches the phone. Allow LocalDrop in Windows Firewall for private networks</string>
+    <string name="a_no_sync">The computer doesn\'t answer clock sync, so rooms are only roughly in sync</string>
+    <string name="e_audio_not_started">the computer didn\'t start streaming</string>
 </resources>

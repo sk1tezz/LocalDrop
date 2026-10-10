@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -117,6 +118,7 @@ private fun Receive(s: AppState) {
         on,
         if (on) stringResource(R.string.rx_on_title, name) else stringResource(R.string.rx_off_title),
         when {
+            inc != null && inc.note.isNotEmpty() -> inc.note
             inc?.connected == true -> stringResource(R.string.latency_sub, lat, inc.bitrate.ifEmpty { "—" })
             on -> stringResource(R.string.rx_connecting)
             else -> stringResource(R.string.rx_off_sub)
@@ -135,10 +137,11 @@ private fun Receive(s: AppState) {
 
     Label(stringResource(R.string.vol_out), Modifier.padding(top = 4.dp))
     Card(padding = PaddingValues(14.dp), gap = 12.dp) {
-        var vol by remember(inc?.vol) { mutableIntStateOf(inc?.vol ?: 65) }
+        var vol by remember { mutableIntStateOf(inc?.vol ?: 65) }
+        LaunchedEffect(inc?.vol) { inc?.vol?.let { vol = it } }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Ic("volume_down", color = c.tx2)
-            Slider(vol, { vol = it }, c.audio, Modifier.weight(1f), onDone = { b.audioVolume(vol) })
+            Slider(vol, { vol = it; b.audioVolume(it) }, c.audio, Modifier.weight(1f))   // local: change the volume while dragging
             Txt("$vol%", Modifier.width(40.dp), size = 12.sp, color = c.tx2, mono = true, align = TextAlign.End)
         }
         val current = inc?.out ?: ""
@@ -174,12 +177,6 @@ private fun Transmit(s: AppState) {
     ) { b.audioToggle() }
     if (s.audio.error.isNotEmpty()) Hint(s.audio.error, "error")
 
-    Label(stringResource(R.string.what_stream), Modifier.padding(top = 4.dp))
-    RadioCard(stringResource(R.string.src_system), stringResource(R.string.src_system_sub), s.settings.audioSource == "system",
-        { b.settings { it.copy(audioSource = "system") } }, icon = "phone_android", color = c.audio, tint = c.audioT)
-    RadioCard(stringResource(R.string.src_mic), stringResource(if (s.perms.mic) R.string.src_mic_sub else R.string.src_mic_perm), s.settings.audioSource == "mic",
-        { b.settings { it.copy(audioSource = "mic") } }, icon = "mic", color = c.audio, tint = c.audioT)
-
     Label(stringResource(R.string.where), Modifier.padding(top = 4.dp))
     if (targets.isNotEmpty()) Group { for (t in targets) TargetRow(s, t) }
     val addable = sendTargets(s).filter { d -> targets.none { it.dev == d.id } }
@@ -211,7 +208,8 @@ private fun TargetRow(s: AppState, t: AudioTarget) {
             Texts(d.name, status, subColor = if (remote?.error?.isNotEmpty() == true) c.bad else c.tx2)
             Toggle(t.on, c.audio) { b.audioTarget(t.dev, on = !t.on) }
         }
-        var vol by remember(t.vol) { mutableIntStateOf(t.vol) }
+        var vol by remember { mutableIntStateOf(t.vol) }
+        LaunchedEffect(t.vol) { vol = t.vol }
         Row(Modifier.alpha(if (t.on) 1f else 0.45f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Ic("volume_up", size = 18.dp, color = c.tx3)
             Slider(vol, { vol = it }, c.audio, Modifier.weight(1f), onDone = { b.audioTarget(t.dev, vol = vol) })

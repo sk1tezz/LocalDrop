@@ -355,4 +355,10 @@
     <string name="e_audio_disabled">audio is off on the computer</string>
     <string name="e_audio_no_answer">no response</string>
     <string name="e_audio_refused">refused</string>
+    <string name="t_capture_failed">Couldn\'t capture sound</string>
+    <string name="e_projection">no permission to capture sound</string>
+    <string name="e_audio_untrusted_pc">that computer doesn\'t trust this phone</string>
+    <string name="e_audio_disabled_pc">audio receiving is off</string>
+    <string name="t_dev_left">Device disconnected</string>
+    <string name="t_dev_left_text">%1$s no longer receives sound</string>
 </resources>

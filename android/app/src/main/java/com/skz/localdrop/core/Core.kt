@@ -245,13 +245,14 @@ class Core(val ctx: Context) : Backend {
     override fun clipSend(id: Long) = clip.send(id)
     override fun clipDelete(id: Long) = clip.delete(id)
     override fun clipClear() = clip.clear()
-    override fun audioToggle() {}
-    override fun audioTarget(dev: String, on: Boolean?, vol: Int?, out: String?) {}
+    override fun audioToggle() = audio.toggle()
+    override fun audioTarget(dev: String, on: Boolean?, vol: Int?, out: String?) = audio.setTarget(dev, on, vol, out)
     override fun audioListen(dev: String) = audio.listen(dev)
     override fun audioListenStop() = audio.listenStop()
     override fun audioIncomingStop() = audio.incomingStop()
     override fun audioOutput(id: String) = audio.setOutput(id)
     override fun audioVolume(vol: Int) = audio.setVolume(vol)
+    override fun audioConsent(resultCode: Int, data: android.content.Intent?) = audio.onConsent(resultCode, data)
 
     override fun historyClear() {
         storage.clearHistory()

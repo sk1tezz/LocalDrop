@@ -366,4 +366,10 @@
     <string name="e_audio_disabled">на компьютере выключен звук</string>
     <string name="e_audio_no_answer">нет ответа</string>
     <string name="e_audio_refused">отказ</string>
+    <string name="t_capture_failed">Не удалось захватить звук</string>
+    <string name="e_projection">нет разрешения на захват звука</string>
+    <string name="e_audio_untrusted_pc">этот компьютер не доверяет телефону</string>
+    <string name="e_audio_disabled_pc">приём звука выключен</string>
+    <string name="t_dev_left">Устройство отключилось</string>
+    <string name="t_dev_left_text">%1$s больше не принимает звук</string>
 </resources>

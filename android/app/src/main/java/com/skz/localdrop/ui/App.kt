@@ -1,7 +1,9 @@
 package com.skz.localdrop.ui
 
 import android.app.Activity
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -107,6 +109,11 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
     val toasts = remember { mutableStateListOf<Pair<Long, Toast>>() }
     val dark = when (s.settings.theme) { "light" -> false; "system" -> systemDark; else -> true }
 
+    val ctx = LocalContext.current
+    val perms = rememberPermActions { backend.refreshPerms() }
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        backend.audioConsent(r.resultCode, r.data)
+    }
     LaunchedEffect(backend) {
         backend.events.collect { e ->
             when (e) {
@@ -116,6 +123,12 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
                     toasts.add(id to e.toast)
                 }
                 is UiEvent.Navigate -> nav.go(e.screen)
+                is UiEvent.AskPermission -> perms.ask(e.kind)
+                UiEvent.CaptureConsent -> runCatching {
+                    val mpm = ctx.getSystemService(MediaProjectionManager::class.java)
+                    // the whole display: capturing one app would only give that app's sound
+                    consent.launch(if (android.os.Build.VERSION.SDK_INT >= 34) mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay()) else mpm.createScreenCaptureIntent())
+                }
             }
         }
     }

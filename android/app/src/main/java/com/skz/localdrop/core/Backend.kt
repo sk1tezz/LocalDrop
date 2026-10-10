@@ -10,6 +10,8 @@ data class Toast(val kind: String, val title: String, val text: String = "")   /
 sealed interface UiEvent {
     data class ShowToast(val toast: Toast) : UiEvent
     data class Navigate(val screen: String) : UiEvent
+    data class AskPermission(val kind: String) : UiEvent
+    data object CaptureConsent : UiEvent
 }
 
 /**
@@ -61,6 +63,8 @@ interface Backend {
     fun audioIncomingStop()
     fun audioOutput(id: String)
     fun audioVolume(vol: Int)
+    /** The answer of the system "start capturing sound" dialog. */
+    fun audioConsent(resultCode: Int, data: android.content.Intent?) {}
 
     // history
     fun historyClear()

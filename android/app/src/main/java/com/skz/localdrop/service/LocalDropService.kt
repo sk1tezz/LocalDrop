@@ -94,6 +94,11 @@ class LocalDropService : Service() {
             update()
         }
 
+        /** Apply the service types right now (must be on the main thread). */
+        fun applyNow() {
+            instance?.applyTypes()
+        }
+
         fun update() {
             instance?.let { s -> android.os.Handler(android.os.Looper.getMainLooper()).post { s.applyTypes() } }
         }

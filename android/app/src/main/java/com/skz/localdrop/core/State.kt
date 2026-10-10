@@ -119,6 +119,7 @@ data class PairDialog(
 )
 
 data class Perms(
+    val lan: Boolean = true,
     val notify: Boolean = false,
     val battery: Boolean = false,
     val mic: Boolean = false,

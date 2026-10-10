@@ -156,7 +156,8 @@ fun PermList(s: AppState, tinted: Boolean = false) {
     val c = Ld.c
     val b = LocalBackend.current
     val ask = rememberPermActions { b.refreshPerms() }
-    val rows = listOf(
+    val rows = listOfNotNull(
+        if (android.os.Build.VERSION.SDK_INT >= 37) Triple("lan", R.string.perm_lan to R.string.perm_lan_sub, "lan") to s.perms.lan else null,
         Triple("notify", R.string.perm_notify to R.string.perm_notify_sub, "notifications") to s.perms.notify,
         Triple("battery", R.string.perm_battery to R.string.perm_battery_sub, "battery_charging_full") to s.perms.battery,
         Triple("mic", R.string.perm_mic to R.string.perm_mic_sub, "mic") to s.perms.mic,

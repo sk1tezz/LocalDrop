@@ -294,4 +294,6 @@
     <string name="t_unpaired_text">%1$s больше не сопряжено с этим телефоном</string>
     <string name="n_running">LocalDrop работает в фоне</string>
     <string name="ch_service">Работа в фоне</string>
+    <string name="perm_lan">Локальная сеть</string>
+    <string name="perm_lan_sub">Без него Android не пускает к компьютерам в Wi-Fi</string>
 </resources>

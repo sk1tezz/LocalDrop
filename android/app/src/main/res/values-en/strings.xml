@@ -285,4 +285,6 @@
     <string name="t_unpaired_text">%1$s is no longer paired with this phone</string>
     <string name="n_running">LocalDrop is running in the background</string>
     <string name="ch_service">Background service</string>
+    <string name="perm_lan">Local network</string>
+    <string name="perm_lan_sub">Without it Android blocks access to computers on your Wi-Fi</string>
 </resources>

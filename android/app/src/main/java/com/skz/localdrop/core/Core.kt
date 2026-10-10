@@ -68,13 +68,14 @@ class Core(val ctx: Context) : Backend {
         override fun log(msg: String) { Log.i(TAG, msg) }
     }, ident, scope, storage.pairedDevices())
 
+    val discovery = Discovery(this)
+
     /** Started once from the service (or the activity if the service could not start). */
     fun start() {
         if (!started.compareAndSet(false, true)) return
         storage.prune()
         history = storage.history()
         perms = readPerms(ctx, perms.tile)
-        ip = Net.pickIp()
         // the language picked in the app (or in system settings for this app) wins over the stored one
         AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }?.get(0)?.language?.let { l ->
             if (l == "ru" || l == "en") settings.update { it.copy(lang = l) }
@@ -85,6 +86,7 @@ class Core(val ctx: Context) : Backend {
         } catch (e: Exception) {
             Log.e(TAG, "cannot listen on ${port}", e)
         }
+        discovery.start()
         publish()
     }
 
@@ -158,7 +160,7 @@ class Core(val ctx: Context) : Backend {
     // ---- backend calls ----------------------------------------------------
     override fun settings(change: (AppSettings) -> AppSettings) = settings.update(change)
 
-    override fun rescan() {}
+    override fun rescan() { scope.launch { discovery.rescan() } }
     override fun pairRequest(dev: String) {}
     override fun pairRespond(dev: String, accept: Boolean, trust: Boolean) {}
     override fun pairOutTrust(dev: String, trust: Boolean) {}
@@ -210,7 +212,9 @@ class Core(val ctx: Context) : Backend {
     override fun historyAction(id: Long) {}
 
     override fun refreshPerms() {
+        val before = perms
         perms = readPerms(ctx, perms.tile)
+        if (perms.lan && !before.lan) scope.launch { discovery.restart() }
         publish()
     }
 }

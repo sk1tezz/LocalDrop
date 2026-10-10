@@ -22,6 +22,7 @@ fun readPerms(ctx: Context, tile: Boolean = false): Perms {
     fun has(p: String) = ContextCompat.checkSelfPermission(ctx, p) == PackageManager.PERMISSION_GRANTED
     val pm = ctx.getSystemService(PowerManager::class.java)
     return Perms(
+        lan = Build.VERSION.SDK_INT < 37 || has("android.permission.ACCESS_LOCAL_NETWORK"),
         notify = Build.VERSION.SDK_INT < 33 || has(Manifest.permission.POST_NOTIFICATIONS),
         battery = pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true,
         mic = has(Manifest.permission.RECORD_AUDIO),
@@ -30,7 +31,7 @@ fun readPerms(ctx: Context, tile: Boolean = false): Perms {
     )
 }
 
-/** Asks for one permission by the ids used in the UI: notify | battery | mic | camera. */
+/** Asks for one permission by the ids used in the UI: lan | notify | battery | mic | camera. */
 class PermActions(val ask: (String) -> Unit)
 
 @SuppressLint("BatteryLife")
@@ -43,6 +44,7 @@ fun rememberPermActions(onResult: () -> Unit): PermActions {
         PermActions { kind ->
             when (kind) {
                 "notify" -> if (Build.VERSION.SDK_INT >= 33) runtime.launch(Manifest.permission.POST_NOTIFICATIONS) else openAppSettings(ctx)
+                "lan" -> runtime.launch("android.permission.ACCESS_LOCAL_NETWORK")
                 "mic" -> runtime.launch(Manifest.permission.RECORD_AUDIO)
                 "camera" -> runtime.launch(Manifest.permission.CAMERA)
                 "battery" -> battery.launch(

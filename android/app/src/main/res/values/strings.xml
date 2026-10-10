@@ -1,3 +1,79 @@
 <resources>
     <string name="app_name" translatable="false">LocalDrop</string>
+    <string name="u_b">Б</string>
+    <string name="u_kb">КБ</string>
+    <string name="u_mb">МБ</string>
+    <string name="u_gb">ГБ</string>
+    <string name="rate_mb">%1$s МБ/с</string>
+    <string name="eta_h">%1$d ч %2$d мин</string>
+    <string name="eta_m">%1$d мин %2$d с</string>
+    <string name="eta_s">%1$d с</string>
+    <string name="dur_hm">%1$d ч %2$s мин</string>
+    <string name="dur_m">%1$d мин</string>
+    <string name="today">Сегодня</string>
+    <string name="yesterday">Вчера</string>
+    <string name="yesterday_lc">вчера</string>
+    <string name="just_now">только что</string>
+    <string name="min_ago">%1$d мин назад</string>
+    <string name="h_ago">%1$d ч назад</string>
+    <string name="greet_night">Доброй ночи!</string>
+    <string name="greet_morning">Доброе утро!</string>
+    <string name="greet_day">Добрый день!</string>
+    <string name="greet_evening">Добрый вечер!</string>
+    <plurals name="n_devices">
+        <item quantity="one">%1$d устройство</item>
+        <item quantity="few">%1$d устройства</item>
+        <item quantity="many">%1$d устройств</item>
+        <item quantity="other">%1$d устройства</item>
+    </plurals>
+    <plurals name="n_files">
+        <item quantity="one">%1$d файл</item>
+        <item quantity="few">%1$d файла</item>
+        <item quantity="many">%1$d файлов</item>
+        <item quantity="other">%1$d файла</item>
+    </plurals>
+    <plurals name="n_online">
+        <item quantity="one">%1$d устройство в сети</item>
+        <item quantity="few">%1$d устройства в сети</item>
+        <item quantity="many">%1$d устройств в сети</item>
+        <item quantity="other">%1$d устройства в сети</item>
+    </plurals>
+    <plurals name="n_active">
+        <item quantity="one">%1$d активная</item>
+        <item quantity="few">%1$d активные</item>
+        <item quantity="many">%1$d активных</item>
+        <item quantity="other">%1$d активной</item>
+    </plurals>
+    <string name="nav_home">Главная</string>
+    <string name="nav_devices">Устройства</string>
+    <string name="nav_files">Файлы</string>
+    <string name="nav_clip">Буфер</string>
+    <string name="nav_audio">Аудио</string>
+    <string name="t_queued">Добавлено в очередь</string>
+    <string name="t_arrow">%1$s → %2$s</string>
+    <string name="t_clip_sent">Буфер обмена отправлен</string>
+    <string name="t_to">На %1$s</string>
+    <string name="t_nobody">Некому отправить</string>
+    <string name="t_no_conn">Нет подключённых устройств</string>
+    <string name="t_copied">Скопировано</string>
+    <string name="t_paste">Можно вставлять</string>
+    <string name="t_scan_done">Поиск завершён</string>
+    <string name="t_scan_n">Устройств в сети: %1$d</string>
+    <string name="t_connected">Устройство подключено</string>
+    <string name="t_conn_declined">Подключение отклонено</string>
+    <string name="t_conn_failed">Не удалось подключиться</string>
+    <string name="t_no_answer">%1$s:%2$d не отвечает</string>
+    <string name="t_code_bad">Код не подошёл</string>
+    <string name="t_code_bad_text">Проверьте код и что устройство в сети</string>
+    <string name="t_own_code">Это ваш собственный код</string>
+    <string name="t_own_code_text">Введите код, показанный на другом устройстве</string>
+    <string name="t_unpaired">Сопряжение удалено</string>
+    <string name="t_untrusted">Удалено из доверенных</string>
+    <string name="t_stream_on">Трансляция запущена</string>
+    <string name="t_stream_off">Трансляция остановлена</string>
+    <string name="t_stream_off_text">Звук снова играет на телефоне</string>
+    <string name="t_pick_devices">Выберите устройства</string>
+    <string name="t_done">Передача завершена</string>
+    <string name="t_cleared">История очищена</string>
+    <string name="toast_head">LocalDrop · сейчас</string>
 </resources>

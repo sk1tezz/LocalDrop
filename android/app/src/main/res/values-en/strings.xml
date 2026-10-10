@@ -1,2 +1,70 @@
 <resources>
+    <string name="u_b">B</string>
+    <string name="u_kb">KB</string>
+    <string name="u_mb">MB</string>
+    <string name="u_gb">GB</string>
+    <string name="rate_mb">%1$s MB/s</string>
+    <string name="eta_h">%1$d h %2$d min</string>
+    <string name="eta_m">%1$d min %2$d s</string>
+    <string name="eta_s">%1$d s</string>
+    <string name="dur_hm">%1$d h %2$s min</string>
+    <string name="dur_m">%1$d min</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="yesterday_lc">yesterday</string>
+    <string name="just_now">just now</string>
+    <string name="min_ago">%1$d min ago</string>
+    <string name="h_ago">%1$d h ago</string>
+    <string name="greet_night">Good night!</string>
+    <string name="greet_morning">Good morning!</string>
+    <string name="greet_day">Good afternoon!</string>
+    <string name="greet_evening">Good evening!</string>
+    <plurals name="n_devices">
+        <item quantity="one">%1$d device</item>
+        <item quantity="other">%1$d devices</item>
+    </plurals>
+    <plurals name="n_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <plurals name="n_online">
+        <item quantity="one">%1$d device online</item>
+        <item quantity="other">%1$d devices online</item>
+    </plurals>
+    <plurals name="n_active">
+        <item quantity="one">%1$d active</item>
+        <item quantity="other">%1$d active</item>
+    </plurals>
+    <string name="nav_home">Home</string>
+    <string name="nav_devices">Devices</string>
+    <string name="nav_files">Files</string>
+    <string name="nav_clip">Clipboard</string>
+    <string name="nav_audio">Audio</string>
+    <string name="t_queued">Added to the queue</string>
+    <string name="t_arrow">%1$s → %2$s</string>
+    <string name="t_clip_sent">Clipboard sent</string>
+    <string name="t_to">To %1$s</string>
+    <string name="t_nobody">Nobody to send to</string>
+    <string name="t_no_conn">No connected devices</string>
+    <string name="t_copied">Copied</string>
+    <string name="t_paste">Ready to paste</string>
+    <string name="t_scan_done">Search finished</string>
+    <string name="t_scan_n">Devices online: %1$d</string>
+    <string name="t_connected">Device connected</string>
+    <string name="t_conn_declined">Connection declined</string>
+    <string name="t_conn_failed">Couldn\'t connect</string>
+    <string name="t_no_answer">%1$s:%2$d is not responding</string>
+    <string name="t_code_bad">The code didn\'t match</string>
+    <string name="t_code_bad_text">Check the code and that the device is online</string>
+    <string name="t_own_code">That\'s your own code</string>
+    <string name="t_own_code_text">Enter the code shown on the other device</string>
+    <string name="t_unpaired">Unpaired</string>
+    <string name="t_untrusted">Removed from trusted</string>
+    <string name="t_stream_on">Streaming started</string>
+    <string name="t_stream_off">Streaming stopped</string>
+    <string name="t_stream_off_text">Sound plays on the phone again</string>
+    <string name="t_pick_devices">Choose devices</string>
+    <string name="t_done">Transfer complete</string>
+    <string name="t_cleared">History cleared</string>
+    <string name="toast_head">LocalDrop · now</string>
 </resources>

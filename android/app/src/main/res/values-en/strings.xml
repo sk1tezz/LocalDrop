@@ -333,4 +333,16 @@
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>
     </plurals>
+    <string name="clip_meta">%1$s×%2$s · %3$s</string>
+    <string name="clip_image">Image</string>
+    <string name="h_text_sent">Text · sent</string>
+    <string name="h_text_recv">Text · received</string>
+    <string name="h_image_sent">Image · sent</string>
+    <string name="h_image_recv">Image · received</string>
+    <string name="t_clip_updated">Clipboard updated</string>
+    <string name="t_clip_got">Clipboard received</string>
+    <string name="t_clip_got_text">From %1$s. Copy it from the history</string>
+    <string name="t_clip_empty">The clipboard is empty</string>
+    <string name="t_clip_empty_text">Copy some text or an image</string>
+    <string name="t_clip_gone">This item is no longer in the clipboard history</string>
 </resources>

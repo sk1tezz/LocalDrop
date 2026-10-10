@@ -344,4 +344,16 @@
         <item quantity="many">%1$d объектов</item>
         <item quantity="other">%1$d объекта</item>
     </plurals>
+    <string name="clip_meta">%1$s×%2$s · %3$s</string>
+    <string name="clip_image">Изображение</string>
+    <string name="h_text_sent">Текст · отправлено</string>
+    <string name="h_text_recv">Текст · получено</string>
+    <string name="h_image_sent">Изображение · отправлено</string>
+    <string name="h_image_recv">Изображение · получено</string>
+    <string name="t_clip_updated">Буфер обмена обновлён</string>
+    <string name="t_clip_got">Получен буфер обмена</string>
+    <string name="t_clip_got_text">От %1$s — скопируйте его из истории</string>
+    <string name="t_clip_empty">Буфер пуст</string>
+    <string name="t_clip_empty_text">Скопируйте текст или картинку</string>
+    <string name="t_clip_gone">Запись уже удалена из истории буфера</string>
 </resources>

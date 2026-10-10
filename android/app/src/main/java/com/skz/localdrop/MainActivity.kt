@@ -44,6 +44,11 @@ class MainActivity : AppCompatActivity() {
         core.refreshPerms()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) core.clip.onFocus()     // the only moment Android lets us read the clipboard
+    }
+
     override fun onStop() {
         core.appVisible = false
         super.onStop()

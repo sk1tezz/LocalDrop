@@ -113,7 +113,7 @@ private fun ClipCard(s: AppState, clip: Clip) {
                 Thumb(clip.image)
                 Column(Modifier.weight(1f)) {
                     Txt(clip.text, size = 14.sp, weight = 600)
-                    if (clip.meta.isNotEmpty()) Txt(clip.meta, size = 12.sp, color = c.tx3)
+                    if (clip.meta.isNotEmpty()) Txt(f.sub(clip.meta), size = 12.sp, color = c.tx3)
                 }
             }
         } else {

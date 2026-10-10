@@ -108,6 +108,7 @@ class Core(val ctx: Context) : Backend {
 
     val notify = com.skz.localdrop.service.Notifier(this)
     val files = FilesGlue(this)
+    val clip = ClipGlue(this)
 
     fun navigate(screen: String) { events.tryEmit(UiEvent.Navigate(screen)) }
 
@@ -160,6 +161,7 @@ class Core(val ctx: Context) : Backend {
         settings = settings.value,
         devices = peers.view().map { Device(it.id, it.name, it.os, it.kind, it.icon, it.ip, it.port, it.online, it.paired, it.trusted) },
         transfers = files.view(),
+        clips = clip.view(),
         history = history,
         pair = pair,
         scanning = scanning,
@@ -235,11 +237,11 @@ class Core(val ctx: Context) : Backend {
     override fun clearDone() = files.service.clearDone()
     override fun openTransfer(tid: String) = files.open(tid)
     override fun setSaveDir(uri: Uri?) = files.setSaveDir(uri)
-    override fun clipSendCurrent(dev: String?) {}
-    override fun clipCopy(id: Long) {}
-    override fun clipSend(id: Long) {}
-    override fun clipDelete(id: Long) {}
-    override fun clipClear() {}
+    override fun clipSendCurrent(dev: String?) = clip.sendCurrent(dev)
+    override fun clipCopy(id: Long) = clip.copy(id)
+    override fun clipSend(id: Long) = clip.send(id)
+    override fun clipDelete(id: Long) = clip.delete(id)
+    override fun clipClear() = clip.clear()
     override fun audioToggle() {}
     override fun audioTarget(dev: String, on: Boolean?, vol: Int?, out: String?) {}
     override fun audioListen(dev: String) {}
@@ -257,6 +259,7 @@ class Core(val ctx: Context) : Backend {
         val h = storage.historyItem(id) ?: return
         when (h.type) {
             "files" -> files.historyAction(h)
+            "clip" -> clip.historyAction(h)
         }
     }
 

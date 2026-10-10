@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- images put into the clipboard are shared from here -->
+<paths>
+    <cache-path name="clipshare" path="clipshare/" />
+</paths>

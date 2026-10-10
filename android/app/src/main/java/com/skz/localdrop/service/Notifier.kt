@@ -7,4 +7,5 @@ import com.skz.localdrop.protocol.files.Transfer
 class Notifier(private val core: Core) {
     fun offer(t: Transfer, auto: Boolean, text: String) {}
     fun received(t: Transfer, location: String) {}
+    fun clip(from: String, text: String, clipId: Long) {}
 }

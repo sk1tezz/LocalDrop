@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- strings looked up by name (history lines stored as {"k": name}) must survive resource shrinking -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@string/h_*,@string/e_*" />
+    tools:keep="@string/h_*,@string/e_*,@string/clip_meta" />

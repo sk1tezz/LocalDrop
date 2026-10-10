@@ -1,0 +1,15 @@
+<resources>
+    <style name="Theme.LocalDrop" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/ld_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <!-- no window at all: used by activities that only read the clipboard and finish -->
+    <style name="Theme.LocalDrop.Invisible" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

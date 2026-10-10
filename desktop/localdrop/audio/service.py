@@ -7,8 +7,10 @@ Control messages (encrypted control connection)::
     audio_stop   {session}
     audio_outputs {}                                   -> {outputs}
     audio_stopped {session}          receiver -> sender: the user disconnected
+    audio_request {vol?}             receiver -> sender: "stream to me" (a phone pressing Listen)
+    audio_release {}                 receiver -> sender: "stop streaming to me"
 
-Only trusted devices may start playback on a receiver.
+Only trusted devices may start playback on a receiver, or ask this computer to stream.
 """
 from __future__ import annotations
 
@@ -40,6 +42,8 @@ class AudioService:
         self.remote: dict[str, dict] = {}          # dev -> {outputs, connected, error}
         self.incoming: dict | None = None          # {dev, session, receiver, player, vol, out, started}
         self.sources: list[dict] = []
+        self._requested: set[str] = set()          # devices that asked us to stream (audio_request)
+        self._on_by_request = False                # streaming was switched on by a request, not by the user
         self._mute_prev: bool | None = None
         self._lock = asyncio.Lock()
         self._tasks: list[asyncio.Task] = []
@@ -55,6 +59,8 @@ class AudioService:
         peers.on("audio_stop", self._on_stop)
         peers.on("audio_outputs", self._on_outputs)
         peers.on("audio_stopped", self._on_stopped)
+        peers.on("audio_request", self._on_request)
+        peers.on("audio_release", self._on_release)
         peers.online_listeners.append(lambda dev, online: self.app.call_soon(self._kick))
 
     # ---- lifecycle --------------------------------------------------------
@@ -105,6 +111,9 @@ class AudioService:
     # ---- api --------------------------------------------------------------
     async def api_toggle(self) -> None:
         self.on = not self.on
+        self._on_by_request = False
+        if not self.on:
+            self._requested.clear()
         self.error = ""
         if not self.app.settings.get("features").get("audio") and self.on:
             self.app.settings.update({"features": {"audio": True}})
@@ -281,6 +290,49 @@ class AudioService:
                                                             for t in targets]}})
             self.app.toast("audio", "Устройство отключилось", "{0} больше не принимает звук", args=(d.name,))
             self._publish()
+
+    # ---- requests from receivers (a phone pressing "Listen") -----------------
+    def _set_target(self, dev: str, on: bool, vol: int | None = None) -> None:
+        targets = self.app.settings.get("audio")["targets"]
+        for t in targets:
+            if t["dev"] == dev:
+                t["on"] = on
+                if vol is not None:
+                    t["vol"] = vol
+                break
+        else:
+            targets.append({"dev": dev, "on": on, "vol": 70 if vol is None else vol, "out": ""})
+        self.app.settings.update({"audio": {"targets": targets}})
+
+    async def _on_request(self, d, conn, msg, body):
+        if not self.app.settings.get("features").get("audio"):
+            return {"ok": False, "error": "disabled"}
+        if not d.trusted:
+            return {"ok": False, "error": "not trusted"}
+        vol = msg.get("vol")
+        self._requested.add(d.id)
+        self._set_target(d.id, True, int(vol) if isinstance(vol, (int, float)) else None)
+        if not self.on:
+            self.on = True
+            self._on_by_request = True
+            self.error = ""
+        await self.reconcile()
+        if self.error:
+            return {"ok": False, "error": self.error}
+        self.app.toast("audio", "Трансляция запущена", "{0} слушает звук этого ПК", args=(d.name,))
+        return {"ok": True}
+
+    async def _on_release(self, d, conn, msg, body):
+        if d.id not in self._requested:
+            return {"ok": True}
+        self._requested.discard(d.id)
+        self._set_target(d.id, False)
+        others = [t for t in self.app.settings.get("audio")["targets"] if t["on"]]
+        if self._on_by_request and not others:
+            self.on = False
+            self._on_by_request = False
+        await self.reconcile()
+        return {"ok": True}
 
     # ---- receiving --------------------------------------------------------
     async def _on_outputs(self, d, conn, msg, body):

@@ -16,7 +16,7 @@ FULL = ROOT / "tools" / "material-symbols-rounded.woff2"
 FULL_URL = "https://cdn.jsdelivr.net/npm/material-symbols@0.27/material-symbols-rounded.woff2"
 OUT = UI / "fonts" / "material-symbols-subset.woff2"
 # icons named only in Python code (device icons) or built dynamically
-EXTRA = ("draft desktop_windows laptop_windows laptop_mac desktop_mac computer tv tablet cast devices_other "
+EXTRA = ("draft desktop_windows laptop_windows laptop_mac desktop_mac computer tv tablet smartphone cast devices_other "
          "music_note image movie folder_zip description folder speaker error check_circle").split()
 
 

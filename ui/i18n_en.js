@@ -16,6 +16,7 @@ window.I18N_EN = {
 "Трансляция звука": "Audio stream",
 "{0}": "{0}",
 "Трансляция запущена": "Streaming started",
+"{0} слушает звук этого ПК": "{0} is listening to this computer",
 "Трансляция остановлена": "Streaming stopped",
 "Звук снова играет на этом ПК": "Sound plays on this computer again",
 "Не удалось захватить звук: {0}": "Couldn't capture sound: {0}",

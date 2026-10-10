@@ -63,6 +63,7 @@ async def dial(port: int) -> None:
 async def node(ddir: str) -> None:
     """Desktop services on a fake app (as in desktop/tests). Each stdin line is evaluated with
     `p` (PeerManager), `k` (Pairing), `f` (FileService), `c` (ClipService), `app`; awaitables are awaited.
+    A line starting with "!" is executed as a statement (to keep objects between lines).
     The result goes to stdout as {"r": ...}; toasts as {"toast": [...]}."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
     from conftest import FakeApp  # noqa: E402
@@ -95,6 +96,10 @@ async def node(ddir: str) -> None:
         if not line or line.strip() == "quit":
             break
         try:
+            if line.startswith("!"):                       # a statement: "!x = 1"
+                exec(compile(line[1:], "<cmd>", "exec"), env)
+                out({"r": None})
+                continue
             r = eval(compile(line, "<cmd>", "eval"), env)
             if asyncio.iscoroutine(r) or isinstance(r, asyncio.Future):
                 r = await r

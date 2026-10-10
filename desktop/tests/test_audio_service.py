@@ -103,3 +103,34 @@ async def test_untrusted_receiver_refuses(nodes):
     assert sb.incoming is None
     assert "доверяет" in sa.remote[B.ident.id]["error"]
     await sa.api_toggle()
+
+
+async def test_receiver_requests_and_releases_the_stream(nodes):
+    """A phone presses Listen: it asks the computer to stream to it, then stops."""
+    A, B, pa, pb, sa, sb, mutes = nodes
+    A.settings.update({"audio": {"targets": []}})
+    reply, _ = await pb.request(A.ident.id, {"type": "audio_request", "vol": 55})
+    assert reply["ok"]
+    assert sa.on and B.ident.id in sa.sessions
+    assert A.settings.get("audio")["targets"] == [{"dev": B.ident.id, "on": True, "vol": 55, "out": ""}]
+    await wait_for(lambda: sb.incoming is not None)
+    reply, _ = await pb.request(A.ident.id, {"type": "audio_release"})
+    assert reply["ok"]
+    assert not sa.on and not sa.sessions
+    await wait_for(lambda: sb.incoming is None)
+
+
+async def test_request_from_untrusted_device_is_refused(nodes):
+    A, B, pa, pb, sa, sb, mutes = nodes
+    pa.set_trust(B.ident.id, False)
+    reply, _ = await pb.request(A.ident.id, {"type": "audio_request"})
+    assert reply == {"ok": False, "error": "not trusted", "type": "reply", "re": reply["re"]}
+    assert not sa.on
+
+
+async def test_release_keeps_streaming_the_user_started(nodes):
+    A, B, pa, pb, sa, sb, mutes = nodes
+    await sa.api_toggle()                         # the user streams to B already
+    await pb.request(A.ident.id, {"type": "audio_request"})
+    await pb.request(A.ident.id, {"type": "audio_release"})
+    assert sa.on                                  # not switched off: the user turned it on

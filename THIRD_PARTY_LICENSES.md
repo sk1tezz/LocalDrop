@@ -44,4 +44,18 @@ folder-style PyInstaller builds.
 | Manrope | SIL Open Font License 1.1 |
 | JetBrains Mono | SIL Open Font License 1.1 |
 
+## Android app
+
+| Component | License |
+|---|---|
+| Kotlin standard library, kotlinx.coroutines, kotlinx.serialization | Apache-2.0 |
+| AndroidX (Compose, Activity, AppCompat, Core, Lifecycle, DocumentFile, CameraX, Glance, WorkManager, Room) | Apache-2.0 |
+| Bouncy Castle (bcprov-jdk18on) | MIT (Bouncy Castle License) |
+| ZXing core | Apache-2.0 |
+| Material Symbols Rounded (subset) | Apache-2.0 |
+| Manrope | SIL Open Font License 1.1 |
+| JetBrains Mono | SIL Open Font License 1.1 |
+
+Opus on Android comes from the platform's codecs (MediaCodec), not from a bundled library.
+
 The full license texts are available from each project's repository and package metadata.

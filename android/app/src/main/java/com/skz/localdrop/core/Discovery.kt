@@ -23,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import java.net.DatagramPacket
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -64,7 +65,16 @@ class Discovery(private val core: Core) {
             override fun onAvailable(network: Network) { core.scope.launch { delay(1500); restartIfChanged() } }
             override fun onLost(network: Network) { core.scope.launch { delay(500); restartIfChanged() } }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { core.scope.launch { delay(1500); restartIfChanged() } }
+            // addresses arrive here, often after onAvailable
+            override fun onLinkPropertiesChanged(network: Network, lp: android.net.LinkProperties) { core.scope.launch { delay(500); restartIfChanged() } }
         })
+        // and a slow safety net for networks that change without telling the default callback
+        core.scope.launch {
+            while (true) {
+                delay(15_000)
+                restartIfChanged()
+            }
+        }
         core.settings.onChange { old, new ->
             if (old.visible != new.visible || old.deviceName != new.deviceName) core.scope.launch { reannounce() }
             if (old.wifiOnly != new.wifiOnly) core.scope.launch { restartIfChanged(force = true) }
@@ -101,9 +111,11 @@ class Discovery(private val core: Core) {
         lock = null
     }
 
-    private suspend fun restartIfChanged(force: Boolean = false) {
+    private val restartLock = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun restartIfChanged(force: Boolean = false) = restartLock.withLock {
         val now = usable()
-        if (!force && now.map { it.ip } == ifaces.map { it.ip }) return
+        if (!force && now.map { it.ip } == ifaces.map { it.ip }) return@withLock
         Log.i(TAG, "network changed: ${now.map { it.name + "=" + it.ip }}")
         close()
         open()

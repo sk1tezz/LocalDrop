@@ -65,6 +65,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -106,7 +107,7 @@ fun Txt(
 fun Ic(name: String, modifier: Modifier = Modifier, size: Dp = 22.dp, color: Color = Ld.c.tx, filled: Boolean = false) {
     val fs = with(LocalDensity.current) { size.toSp() }
     BasicText(
-        name, modifier,
+        name, modifier.clearAndSetSemantics {},        // the ligature name is not something to read aloud
         style = TextStyle(color = color, fontSize = fs, lineHeight = fs, fontFamily = if (filled) SymbolsFilled else Symbols),
         maxLines = 1, softWrap = false,
     )

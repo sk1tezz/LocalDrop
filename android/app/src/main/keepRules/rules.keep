@@ -1,12 +1,16 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# R8 rules for LocalDrop.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# WorkManager (used by the Glance widget) creates its Room database by reflection: <Name>_Impl.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+-keep class androidx.work.impl.** { *; }
+
+# Workers and widget receivers are created by name.
+-keep class * extends androidx.work.ListenableWorker { <init>(android.content.Context, androidx.work.WorkerParameters); }
+-keep class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { <init>(); }
+
+# BouncyCastle's lightweight API is used directly; keep only what is referenced (no JCA provider).
+-dontwarn org.bouncycastle.**
+
+# Room (inside WorkManager) instantiates its generated code through its own runtime helpers.
+-keep class androidx.room.** { *; }
+-keep class androidx.sqlite.** { *; }

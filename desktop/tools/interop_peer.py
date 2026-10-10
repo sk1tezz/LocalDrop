@@ -62,7 +62,8 @@ async def dial(port: int) -> None:
 
 async def node(ddir: str) -> None:
     """Desktop services on a fake app (as in desktop/tests). Each stdin line is evaluated with
-    `p` (PeerManager), `k` (Pairing), `f` (FileService), `c` (ClipService), `app`; awaitables are awaited.
+    `p` (PeerManager), `k` (Pairing), `f` (FileService), `c` (ClipService), `a` (AudioService, not started), `app`;
+    awaitables are awaited.
     A line starting with "!" is executed as a statement (to keep objects between lines).
     The result goes to stdout as {"r": ...}; toasts as {"toast": [...]}."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
@@ -86,10 +87,12 @@ async def node(ddir: str) -> None:
     k = Pairing(app, p)
     f = FileService(app, p)
     c = ClipService(app, p, backend=None)
+    from localdrop.audio.service import AudioService
+    a = AudioService(app, p)
     for svc in (p, k, f):
         await svc.start()
     print(f"READY {app.port} {app.ident.id}", flush=True)
-    env = {"p": p, "k": k, "f": f, "c": c, "app": app, "asyncio": asyncio, "json": json}
+    env = {"p": p, "k": k, "f": f, "c": c, "a": a, "app": app, "asyncio": asyncio, "json": json}
     loop = asyncio.get_running_loop()
     while True:
         line = await loop.run_in_executor(None, sys.stdin.readline)

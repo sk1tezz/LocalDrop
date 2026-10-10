@@ -109,6 +109,7 @@ class Core(val ctx: Context) : Backend {
     val notify = com.skz.localdrop.service.Notifier(this)
     val files = FilesGlue(this)
     val clip = ClipGlue(this)
+    val audio = com.skz.localdrop.audio.AudioGlue(this)
 
     fun navigate(screen: String) { events.tryEmit(UiEvent.Navigate(screen)) }
 
@@ -131,6 +132,7 @@ class Core(val ctx: Context) : Backend {
         discovery.start()
         pairing.start()
         files.service.start()
+        audio.start()
         publish()
     }
 
@@ -162,6 +164,7 @@ class Core(val ctx: Context) : Backend {
         devices = peers.view().map { Device(it.id, it.name, it.os, it.kind, it.icon, it.ip, it.port, it.online, it.paired, it.trusted) },
         transfers = files.view(),
         clips = clip.view(),
+        audio = audio.view(),
         history = history,
         pair = pair,
         scanning = scanning,
@@ -244,11 +247,11 @@ class Core(val ctx: Context) : Backend {
     override fun clipClear() = clip.clear()
     override fun audioToggle() {}
     override fun audioTarget(dev: String, on: Boolean?, vol: Int?, out: String?) {}
-    override fun audioListen(dev: String) {}
-    override fun audioListenStop() {}
-    override fun audioIncomingStop() {}
-    override fun audioOutput(id: String) {}
-    override fun audioVolume(vol: Int) {}
+    override fun audioListen(dev: String) = audio.listen(dev)
+    override fun audioListenStop() = audio.listenStop()
+    override fun audioIncomingStop() = audio.incomingStop()
+    override fun audioOutput(id: String) = audio.setOutput(id)
+    override fun audioVolume(vol: Int) = audio.setVolume(vol)
 
     override fun historyClear() {
         storage.clearHistory()

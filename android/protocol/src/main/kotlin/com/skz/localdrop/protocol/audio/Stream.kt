@@ -81,16 +81,19 @@ fun audioPacket(index: Long, t0: Long, codec: Int, payload: ByteArray): ByteArra
 
 // ---- codecs -----------------------------------------------------------------
 
-/** Encodes 10 ms of interleaved stereo float [-1, 1] (or a part of it). */
+/**
+ * Encodes interleaved stereo float [-1, 1]. Hardware codecs may hand packets back later, so the
+ * result is (sample index, payload) pairs: the index of the first sample each packet holds.
+ */
 interface Encoder {
     val codec: Int
-    fun encode(frame: FloatArray, off: Int, frames: Int): ByteArray?
+    fun encode(frame: FloatArray, off: Int, frames: Int, index: Long): List<Pair<Long, ByteArray>>
     fun close() {}
 }
 
-/** Decodes a payload to interleaved stereo floats, or null. */
+/** Decodes a payload that starts at sample [index]; returns (index, interleaved stereo floats) pairs. */
 interface Decoder {
-    fun decode(payload: ByteArray): FloatArray?
+    fun decode(index: Long, payload: ByteArray): List<Pair<Long, FloatArray>>
     fun close() {}
 }
 
@@ -99,16 +102,16 @@ object Pcm : Encoder, Decoder {
 
     override fun close() {}
 
-    override fun encode(frame: FloatArray, off: Int, frames: Int): ByteArray {
+    override fun encode(frame: FloatArray, off: Int, frames: Int, index: Long): List<Pair<Long, ByteArray>> {
         val b = ByteBuffer.allocate(frames * 4).order(ByteOrder.LITTLE_ENDIAN)
         for (i in 0 until frames * 2) b.putShort((frame[off * 2 + i] * 32767f).coerceIn(-32768f, 32767f).toInt().toShort())
-        return b.array()
+        return listOf(index to b.array())
     }
 
-    override fun decode(payload: ByteArray): FloatArray? {
-        if (payload.size % 4 != 0) return null
+    override fun decode(index: Long, payload: ByteArray): List<Pair<Long, FloatArray>> {
+        if (payload.size % 4 != 0) return emptyList()
         val b = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-        return FloatArray(payload.size / 2) { b.short / 32768f }
+        return listOf(index to FloatArray(payload.size / 2) { b.short / 32768f })
     }
 }
 
@@ -177,10 +180,12 @@ class JitterBuffer(seconds: Double = 4.0) {
  * Receives, decrypts and decodes one incoming stream (desktop Receiver). The audio output calls
  * [render] with the local time its first sample will reach the speaker.
  */
-class Receiver(keys: AudioKeys, private val sender: InetSocketAddress, delayMs: Int, volume: Int, private val decoders: (Int) -> Decoder?) {
+class Receiver(
+    keys: AudioKeys, private val sender: InetSocketAddress, delayMs: Int, volume: Int, localPort: Int = 0, private val decoders: (Int) -> Decoder?,
+) {
     private val rx = Channel(keys.kAudio.unhex(), keys.sAudio.unhex())
     private val tx = Channel(keys.kSync.unhex(), keys.sSync.unhex())
-    val sock = DatagramSocket(0).apply { receiveBufferSize = 1 shl 20 }
+    val sock = DatagramSocket(localPort).apply { receiveBufferSize = 1 shl 20 }
     val port: Int = sock.localPort
     val clock = ClockSync()
     val buf = JitterBuffer()
@@ -236,14 +241,15 @@ class Receiver(keys: AudioKeys, private val sender: InetSocketAddress, delayMs: 
                 val st0 = b.long
                 val c = b.get().toInt()
                 val dec = decs[c] ?: decoders(c)?.also { decs[c] = it } ?: continue
-                val pcm = dec.decode(plain.copyOfRange(17, plain.size)) ?: continue
                 synchronized(this) {
                     if (t0 != st0) {          // the sender (re)started its timeline
                         t0 = st0
                         pos = null
                     }
                 }
-                buf.write(idx, pcm)
+                val out = dec.decode(idx, plain.copyOfRange(17, plain.size))
+                if (out.isEmpty()) continue
+                for ((i, pcm) in out) buf.write(i, pcm)
                 packets++
                 bytes += pk.length
                 codec = c
@@ -380,10 +386,10 @@ class Sender(@Volatile var encoder: Encoder) {
         val enc = encoder
         val parts = if (enc.codec == CODEC_PCM) {
             // 5 ms packets: no IP fragmentation
-            (0 until frames step FRAME / 2).map { o -> (startIndex + o) to enc.encode(frame, o, min(FRAME / 2, frames - o)) }
-        } else listOf(startIndex to enc.encode(frame, 0, frames))
+            (0 until frames step FRAME / 2).flatMap { o -> enc.encode(frame, o, min(FRAME / 2, frames - o), startIndex + o) }
+        } else enc.encode(frame, 0, frames, startIndex)
         for ((idx, payload) in parts) {
-            if (payload == null || payload.isEmpty()) continue
+            if (payload.isEmpty()) continue
             val plain = audioPacket(idx, t0, enc.codec, payload)
             for (t in targets.values) runCatching {
                 val p = t.tx.seal(T_AUDIO, plain)

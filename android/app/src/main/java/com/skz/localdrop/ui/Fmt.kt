@@ -124,7 +124,13 @@ class Fmt(private val res: Resources) {
             "dur" in e -> duration((e["dur"] as JsonPrimitive).content.toDouble().toLong())
             else -> ""
         }
-        is JsonPrimitive -> e.content.let { if (it.startsWith("{")) err(it) else it }
+        is JsonPrimitive -> e.content.let {
+            when {
+                it.startsWith("{") -> err(it)
+                it.startsWith("q_") -> res.getIdentifier(it, "string", PKG).takeIf { id -> id != 0 }?.let { id -> res.getString(id) } ?: it
+                else -> it
+            }
+        }
         else -> e.toString()
     }
 

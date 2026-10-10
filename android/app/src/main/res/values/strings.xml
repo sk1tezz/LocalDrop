@@ -356,4 +356,14 @@
     <string name="t_clip_empty">Буфер пуст</string>
     <string name="t_clip_empty_text">Скопируйте текст или картинку</string>
     <string name="t_clip_gone">Запись уже удалена из истории буфера</string>
+    <string name="t_audio_in">Входящий звук</string>
+    <string name="t_audio_in_text">Играет звук с %1$s</string>
+    <string name="t_audio_failed">Не удалось включить звук</string>
+    <string name="h_audio_title">Трансляция звука</string>
+    <string name="h_audio">%1$s</string>
+    <string name="h_audio_q">%1$s · %2$s</string>
+    <string name="e_audio_untrusted">компьютер не доверяет этому телефону</string>
+    <string name="e_audio_disabled">на компьютере выключен звук</string>
+    <string name="e_audio_no_answer">нет ответа</string>
+    <string name="e_audio_refused">отказ</string>
 </resources>

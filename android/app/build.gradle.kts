@@ -15,6 +15,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     androidResources {
@@ -66,4 +67,6 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.glance.appwidget)
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext)
 }

@@ -14,6 +14,8 @@ camerax = "1.6.2"
 glance = "1.2.0"
 documentfile = "1.1.0"
 junit = "4.13.2"
+androidxTestRunner = "1.7.0"
+androidxTestExt = "1.3.0"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -37,6 +39,8 @@ camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", versi
 camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-test-ext = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

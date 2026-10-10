@@ -32,14 +32,18 @@ class LocalDropService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private var online = 0
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
         Notifications.channels(this)
-        ServiceCompat.startForeground(this, Notifications.ID_SERVICE, build(0), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        applyTypes()
         val core = (application as LocalDropApp).core
         core.start()
         scope.launch {
             core.state.map { s -> s.devices.count { it.online } }.distinctUntilChanged().collect { n ->
+                online = n
                 getSystemService(NotificationManager::class.java).notify(Notifications.ID_SERVICE, build(n))
             }
         }
@@ -47,7 +51,18 @@ class LocalDropService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
+    /** The service types follow what is going on: playing sound, capturing it, or just staying reachable. */
+    fun applyTypes() {
+        var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        if (playing) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        if (projecting) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        if (recording) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        runCatching { ServiceCompat.startForeground(this, Notifications.ID_SERVICE, build(online), types) }
+            .onFailure { android.util.Log.w(com.skz.localdrop.core.TAG, "foreground types $types refused", it) }
+    }
+
     override fun onDestroy() {
+        instance = null
         scope.cancel()
         super.onDestroy()
     }
@@ -69,6 +84,20 @@ class LocalDropService : Service() {
     }
 
     companion object {
+        @Volatile private var instance: LocalDropService? = null
+        @Volatile private var playing = false
+        @Volatile var projecting = false
+        @Volatile var recording = false
+
+        fun playing(ctx: Context, on: Boolean) {
+            playing = on
+            update()
+        }
+
+        fun update() {
+            instance?.let { s -> android.os.Handler(android.os.Looper.getMainLooper()).post { s.applyTypes() } }
+        }
+
         fun start(ctx: Context) {
             runCatching { ContextCompat.startForegroundService(ctx, Intent(ctx, LocalDropService::class.java)) }
         }

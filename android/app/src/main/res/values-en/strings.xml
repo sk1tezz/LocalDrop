@@ -345,4 +345,14 @@
     <string name="t_clip_empty">The clipboard is empty</string>
     <string name="t_clip_empty_text">Copy some text or an image</string>
     <string name="t_clip_gone">This item is no longer in the clipboard history</string>
+    <string name="t_audio_in">Incoming sound</string>
+    <string name="t_audio_in_text">Playing sound from %1$s</string>
+    <string name="t_audio_failed">Couldn\'t start the sound</string>
+    <string name="h_audio_title">Audio stream</string>
+    <string name="h_audio">%1$s</string>
+    <string name="h_audio_q">%1$s · %2$s</string>
+    <string name="e_audio_untrusted">the computer doesn\'t trust this phone</string>
+    <string name="e_audio_disabled">audio is off on the computer</string>
+    <string name="e_audio_no_answer">no response</string>
+    <string name="e_audio_refused">refused</string>
 </resources>

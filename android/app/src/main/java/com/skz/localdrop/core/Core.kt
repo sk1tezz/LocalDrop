@@ -152,6 +152,8 @@ class Core(val ctx: Context) : Backend {
             val s = build()
             _state.value = s
             notify.update(s)
+            com.skz.localdrop.system.Shortcuts.update(ctx, s.devices)
+            com.skz.localdrop.system.LocalDropWidget.refresh(ctx, s)
             locks.update(s.transfers.any { it.status == "active" } || s.audio.on || s.audio.incoming != null)
         }
     }
@@ -273,9 +275,16 @@ class Core(val ctx: Context) : Backend {
         }
     }
 
+    private val prefs = ctx.getSharedPreferences("ui", Context.MODE_PRIVATE)
+
+    fun tileAdded() {
+        prefs.edit().putBoolean("tile", true).apply()
+        refreshPerms()
+    }
+
     override fun refreshPerms() {
         val before = perms
-        perms = readPerms(ctx, perms.tile)
+        perms = readPerms(ctx, prefs.getBoolean("tile", false))
         if (perms.lan && !before.lan) scope.launch { discovery.restart() }
         publish()
     }

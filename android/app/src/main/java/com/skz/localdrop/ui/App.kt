@@ -1,6 +1,8 @@
 package com.skz.localdrop.ui
 
 import android.app.Activity
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
@@ -155,6 +157,13 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
             media = { pickFor = it; media.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
             folder = { pickFor = it; folder.launch(null) },
             saveDir = { saveDir.launch(null) },
+            addTile = {
+                (ctx as? Activity)?.let { a -> com.skz.localdrop.system.ClipTileService.requestAdd(a) { (backend as? com.skz.localdrop.core.Core)?.tileAdded() } }
+            },
+            addWidget = {
+                val awm = AppWidgetManager.getInstance(ctx)
+                if (awm.isRequestPinAppWidgetSupported) awm.requestPinAppWidget(ComponentName(ctx, com.skz.localdrop.system.LocalDropWidgetReceiver::class.java), null, null)
+            },
         )
     }
 

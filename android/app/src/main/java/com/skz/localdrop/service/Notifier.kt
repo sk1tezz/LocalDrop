@@ -198,6 +198,7 @@ class ActionReceiver : BroadcastReceiver() {
         const val PAIR_NO = "com.skz.localdrop.PAIR_NO"
         const val CLIP_COPY = "com.skz.localdrop.CLIP_COPY"
         const val AUDIO_STOP = "com.skz.localdrop.AUDIO_STOP"
+        const val AUDIO_TOGGLE = "com.skz.localdrop.AUDIO_TOGGLE"
         const val OPEN = "com.skz.localdrop.OPEN"
     }
 
@@ -222,6 +223,13 @@ class ActionReceiver : BroadcastReceiver() {
                 if (core.state.value.audio.incoming != null) core.audioListenStop()
             }
             OPEN -> core.files.openLocation(arg)
+            // the widget: stop what plays, or open the audio screen (capture needs the app in front)
+            AUDIO_TOGGLE -> {
+                val a = core.state.value.audio
+                if (a.on || a.incoming != null || a.listening.isNotEmpty()) {
+                    if (a.on) core.audioToggle() else core.audioListenStop()
+                } else ctx.startActivity(Intent(ctx, MainActivity::class.java).putExtra("screen", "audio").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
         }
     }
 }

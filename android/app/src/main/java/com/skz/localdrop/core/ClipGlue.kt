@@ -228,6 +228,19 @@ class ClipGlue(private val core: Core) {
         else core.toast("bad", R.string.t_nobody, core.str(R.string.t_no_conn))
     }
 
+    /** Text shared from another app ("Share -> LocalDrop"). */
+    fun sendText(text: String, dev: String?) {
+        if (text.isBlank() || text.length > MAX_TEXT) return
+        core.scope.launch(Dispatchers.IO) {
+            val c = Local("text", textHash(text), text)
+            if (c.hash != lastHash) {
+                lastHash = c.hash
+                store(c, "me")
+            }
+            sendManual(c, dev)
+        }
+    }
+
     fun copy(id: Long) {
         core.scope.launch(Dispatchers.IO) {
             val c = core.storage.clip(id)?.let { fromRow(it) } ?: return@launch

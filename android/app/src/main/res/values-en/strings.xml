@@ -370,4 +370,10 @@
     <string name="copy">Copy</string>
     <string name="n_pair_code">Code %1$s: compare it with the computer\'s screen</string>
     <string name="n_audio_text">Tap to open LocalDrop</string>
+    <string name="share_title">Send with LocalDrop</string>
+    <string name="share_none">Connect a computer in LocalDrop first</string>
+    <string name="share_label">LocalDrop</string>
+    <string name="tile_label">LocalDrop</string>
+    <string name="tile_sub_short">Send clipboard</string>
+    <string name="w_online">%1$d online</string>
 </resources>

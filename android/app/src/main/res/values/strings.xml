@@ -381,4 +381,10 @@
     <string name="copy">Копировать</string>
     <string name="n_pair_code">Код %1$s — сверьте его на экране компьютера</string>
     <string name="n_audio_text">Нажмите, чтобы открыть LocalDrop</string>
+    <string name="share_title">Отправить через LocalDrop</string>
+    <string name="share_none">Сначала подключите компьютер в LocalDrop</string>
+    <string name="share_label">LocalDrop</string>
+    <string name="tile_label">LocalDrop</string>
+    <string name="tile_sub_short">Отправить буфер</string>
+    <string name="w_online">%1$d в сети</string>
 </resources>

@@ -1,6 +1,13 @@
 package com.skz.localdrop.protocol
 
 import com.skz.localdrop.protocol.crypto.Identity
+import com.skz.localdrop.protocol.files.DirInbox
+import com.skz.localdrop.protocol.files.FileHost
+import com.skz.localdrop.protocol.files.FileService
+import com.skz.localdrop.protocol.files.FileSource
+import com.skz.localdrop.protocol.files.Inbox
+import com.skz.localdrop.protocol.files.Source
+import com.skz.localdrop.protocol.files.Transfer
 import com.skz.localdrop.protocol.net.Device
 import com.skz.localdrop.protocol.net.PeerHost
 import com.skz.localdrop.protocol.net.PeerManager
@@ -18,7 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 fun freePort(): Int = ServerSocket(0).use { it.localPort }
 
 /** A Kotlin node for tests: a PeerManager on a free port. */
-class KNode(name: String = "Phone") : AutoCloseable {
+class KNode(name: String = "Phone", val inboxDir: java.io.File = kotlin.io.path.createTempDirectory("kinbox").toFile()) : AutoCloseable {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val ident = Identity.generate()
     val unpaired = CopyOnWriteArrayList<String>()
@@ -41,6 +48,23 @@ class KNode(name: String = "Phone") : AutoCloseable {
         override fun ip() = "127.0.0.1"
     }, peers, scope).also { it.start() }
 
+    val history = CopyOnWriteArrayList<String>()
+    @Volatile var autoAccept = true
+    val files = FileService(object : FileHost {
+        override fun enabled() = true
+        override fun autoAccept() = autoAccept
+        override fun inbox(): Inbox = DirInbox(inboxDir)
+        override fun source(): Source = FileSource()
+        override fun save(t: Transfer) {}
+        override fun delete(id: String) {}
+        override fun changed(now: Boolean) {}
+        override fun history(t: Transfer, err: Boolean) { history.add((if (err) "err:" else "") + t.name) }
+        override fun notice(kind: String, key: String, t: Transfer, vararg args: String) { notices.add(key) }
+        override fun incomingOffer(t: Transfer, auto: Boolean) { notices.add(if (auto) "incoming" else "ask") }
+        override fun received(t: Transfer) { notices.add("received") }
+        override fun log(msg: String) = println("[kotlin] " + msg)
+    }, peers, scope).also { it.start() }
+
     /** Make both nodes know each other's address without pairing. */
     fun meet(py: PythonPeer, pyPort: Int, pyId: String) {
         peers.seen(pyId, obj("name" to "Desktop", "ip" to "127.0.0.1", "port" to pyPort))
@@ -56,6 +80,7 @@ class KNode(name: String = "Phone") : AutoCloseable {
     }
 
     override fun close() {
+        files.stop()
         pairing.stop()
         peers.stop()
         scope.cancel()

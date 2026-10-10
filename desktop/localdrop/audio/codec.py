@@ -77,6 +77,21 @@ class Decoder:
         return np.concatenate(out) if out else None
 
 
+def downmix(pcm: np.ndarray) -> np.ndarray:
+    """WAVE channel order (FL FR FC LFE BL BR SL SR) -> stereo; centre and surrounds at -3 dB, LFE dropped."""
+    n = pcm.shape[1]
+    left = pcm[:, 0].copy()
+    right = pcm[:, 1].copy()
+    if n >= 3:
+        left += 0.7071 * pcm[:, 2]
+        right += 0.7071 * pcm[:, 2]
+    for li, ri in ((4, 5), (6, 7)):
+        if n > ri:
+            left += 0.7071 * pcm[:, li]
+            right += 0.7071 * pcm[:, ri]
+    return np.clip(np.stack((left, right), axis=1), -1.0, 1.0)
+
+
 class Resampler:
     """Any rate / channel count -> 48 kHz stereo float32, chopped into 10 ms frames."""
 
@@ -91,7 +106,7 @@ class Resampler:
         if pcm.shape[1] == 1:
             pcm = np.repeat(pcm, 2, axis=1)
         elif pcm.shape[1] > 2:
-            pcm = pcm[:, :2]
+            pcm = downmix(pcm)
         pcm = np.ascontiguousarray(pcm, dtype=np.float32)
         if rate != RATE:
             if self._key != rate:

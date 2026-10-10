@@ -41,22 +41,33 @@ class _PaCapture:
     def start(self) -> None:
         pa = self.pa_mod
         self._pa = pa.PyAudio()
-        dev = self.device or self._default(self._pa)
-        ch = max(1, min(2, int(dev["maxInputChannels"])))
-        rate = int(dev["defaultSampleRate"])
-        self.rate, self.channels = rate, ch
-
-        def cb(data, frames, info, status):
-            self.on_audio(np.frombuffer(data, dtype=np.float32).reshape(-1, ch), rate)
-            return None, pa.paContinue
-
         try:
-            self._stream = self._pa.open(format=pa.paFloat32, channels=ch, rate=rate, input=True,
-                                         input_device_index=dev["index"], frames_per_buffer=int(rate * 0.01),
-                                         stream_callback=cb)
-        except OSError as e:
+            dev = self.device or self._default(self._pa)
+        except CaptureError:
             self._pa.terminate()
-            raise CaptureError(str(e)) from e
+            self._pa = None
+            raise
+        rate = int(dev["defaultSampleRate"])
+        native = max(1, int(dev["maxInputChannels"]))
+        # WASAPI shared mode only accepts the device mix format, so a 5.1/7.1 output must be opened
+        # with all its channels (PortAudio reports the mismatch as "-9996 Invalid device").
+        err = None
+        for ch in dict.fromkeys((native, min(native, 2))):
+            def cb(data, frames, info, status, ch=ch):
+                self.on_audio(np.frombuffer(data, dtype=np.float32).reshape(-1, ch), rate)
+                return None, pa.paContinue
+            try:
+                self._stream = self._pa.open(format=pa.paFloat32, channels=ch, rate=rate, input=True,
+                                             input_device_index=dev["index"], frames_per_buffer=int(rate * 0.01),
+                                             stream_callback=cb)
+                self.rate, self.channels = rate, ch
+                return
+            except OSError as e:
+                err = e
+                log.warning("opening %r with %d ch at %d Hz failed: %s", dev.get("name"), ch, rate, e)
+        self._pa.terminate()
+        self._pa = None
+        raise CaptureError(str(err)) from err
 
     def _default(self, p):
         raise NotImplementedError

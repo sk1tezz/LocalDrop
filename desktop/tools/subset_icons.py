@@ -20,6 +20,19 @@ EXTRA = ("draft desktop_windows laptop_windows laptop_mac desktop_mac computer t
          "music_note image movie folder_zip description folder speaker error check_circle").split()
 
 
+def ligatures(font: TTFont) -> dict[str, str]:
+    """Icon name -> glyph name. Some names are aliases (``draft`` draws the ``note`` glyph)."""
+    rev = {g: chr(c) for c, g in font.getBestCmap().items()}
+    out = {}
+    for lookup in font["GSUB"].table.LookupList.Lookup:
+        for st in lookup.SubTable:
+            st = getattr(st, "ExtSubTable", st)
+            for first, ligs in getattr(st, "ligatures", {}).items():
+                for lig in ligs:
+                    out.setdefault("".join(rev.get(g, "?") for g in [first, *lig.Component]), lig.LigGlyph)
+    return out
+
+
 def main() -> None:
     if not FULL.exists():
         import urllib.request
@@ -27,15 +40,18 @@ def main() -> None:
         urllib.request.urlretrieve(FULL_URL, FULL)
     src = "".join(p.read_text("utf-8") for p in UI.glob("*.js"))
     font = TTFont(str(FULL))
-    names = set(font.getGlyphOrder())
+    names = ligatures(font)
     icons = sorted({n for n in re.findall(r"\b[a-z][a-z0-9_]+\b", src) if n in names and len(n) > 2} | set(EXTRA))
+    missing = [i for i in icons if i not in names]
+    if missing:
+        print("not in the font:", " ".join(missing))
     opts = subset.Options()
     opts.flavor = "woff2"
     opts.layout_features = ["liga", "rlig", "calt"]
     opts.layout_closure = False
     opts.name_IDs = ["*"]
     sub = subset.Subsetter(opts)
-    sub.populate(glyphs=[i for i in icons if i in names], text="abcdefghijklmnopqrstuvwxyz0123456789_")
+    sub.populate(glyphs=sorted({names[i] for i in icons if i in names}), text="abcdefghijklmnopqrstuvwxyz0123456789_")
     sub.subset(font)
     font.flavor = "woff2"
     font.save(str(OUT))

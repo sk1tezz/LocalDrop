@@ -4,7 +4,7 @@ import time
 import numpy as np
 import pytest
 
-from localdrop.audio.codec import RATE
+from localdrop.audio.codec import RATE, Resampler, downmix
 from localdrop.audio.stream import NS, ClockSync, JitterBuffer, Receiver, Sender, new_keys, now_ns
 
 
@@ -85,3 +85,14 @@ def test_jitter_buffer_interpolates_and_fills_gaps():
     out = jb.read(90, 20, 1.0)
     assert (out[:9] == 0).all() and np.allclose(out[10:], 1)
     assert np.allclose(jb.read(300.5, 4, 1.0), 1)
+
+
+def test_surround_capture_is_downmixed_to_stereo():
+    pcm = np.zeros((480, 8), dtype=np.float32)
+    pcm[:, 2] = 0.5                       # centre only (dialogue in a 7.1 mix)
+    st = downmix(pcm)
+    assert st.shape == (480, 2) and np.allclose(st, 0.5 * 0.7071, atol=1e-4)
+    pcm[:, 0] = pcm[:, 4] = pcm[:, 6] = 1.0
+    assert downmix(pcm)[:, 0].max() <= 1.0
+    frames = Resampler().push(np.full((RATE // 100, 6), 0.1, dtype=np.float32), RATE)
+    assert len(frames) == 1 and frames[0].shape[1] == 2

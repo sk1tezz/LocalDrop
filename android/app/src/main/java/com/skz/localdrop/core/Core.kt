@@ -12,7 +12,11 @@ import com.skz.localdrop.R
 import com.skz.localdrop.protocol.crypto.Identity
 import com.skz.localdrop.protocol.net.Device as PeerDevice
 import com.skz.localdrop.protocol.net.PeerHost
+import com.skz.localdrop.protocol.net.PairState
+import com.skz.localdrop.protocol.net.Pairing
+import com.skz.localdrop.protocol.net.PairingHost
 import com.skz.localdrop.protocol.net.PeerManager
+import com.skz.localdrop.protocol.net.fmtCode
 import com.skz.localdrop.ui.readPerms
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +56,6 @@ class Core(val ctx: Context) : Backend {
     @Volatile var scanning = false
     @Volatile var perms = Perms()
     @Volatile var code: String = ""
-    @Volatile var qr: String = ""
     @Volatile var pair: PairDialog? = null
     @Volatile private var history: List<HistoryItem> = emptyList()
 
@@ -69,6 +72,39 @@ class Core(val ctx: Context) : Backend {
     }, ident, scope, storage.pairedDevices())
 
     val discovery = Discovery(this)
+
+    val pairing = Pairing(object : PairingHost {
+        override fun pairChanged(p: PairState?) {
+            pair = p?.let { PairDialog(it.id, it.dir, it.name, it.os, it.icon, it.ip, it.code, it.trust) }
+            publish()
+        }
+
+        override fun codeChanged(code: String) {
+            this@Core.code = fmtCode(code)
+            publish()
+        }
+
+        override fun notice(kind: String, key: String, vararg args: String) = pairNotice(kind, key, args)
+        override fun ip() = this@Core.ip
+    }, peers, scope)
+
+    private fun pairNotice(kind: String, key: String, a: Array<out String>) {
+        val arg = a.firstOrNull() ?: ""
+        when (key) {
+            "conn_failed" -> toast(kind, R.string.t_conn_failed, str(R.string.t_no_answer, arg, a.getOrNull(1)?.toIntOrNull() ?: 0))
+            "already" -> toast(kind, R.string.t_already, arg)
+            "connected" -> toast(kind, R.string.t_connected, arg)
+            "connected_code" -> toast(kind, R.string.t_connected, str(R.string.t_by_code, arg))
+            "busy" -> toast(kind, R.string.t_busy, str(R.string.t_busy_text, arg))
+            "declined" -> toast(kind, R.string.t_conn_declined, arg)
+            "request_in" -> toast(kind, R.string.t_request_in, arg)
+            "cancelled" -> toast(kind, R.string.t_request_cancelled, arg)
+            "own_code" -> toast(kind, R.string.t_own_code, str(R.string.t_own_code_text))
+            "code_bad" -> toast(kind, R.string.t_code_bad, str(R.string.t_code_bad_text))
+            "qr_self" -> toast(kind, R.string.t_qr_self)
+            "qr_failed" -> toast(kind, R.string.t_qr_failed, str(R.string.t_qr_failed_text))
+        }
+    }
 
     /** Started once from the service (or the activity if the service could not start). */
     fun start() {
@@ -87,6 +123,7 @@ class Core(val ctx: Context) : Backend {
             Log.e(TAG, "cannot listen on ${port}", e)
         }
         discovery.start()
+        pairing.start()
         publish()
     }
 
@@ -113,7 +150,7 @@ class Core(val ctx: Context) : Backend {
 
     private fun build(): AppState = AppState(
         ready = true,
-        me = Me(ident.id, settings.value.deviceName, ip, port, code, qr, network, BuildConfig.VERSION_NAME),
+        me = Me(ident.id, settings.value.deviceName, ip, port, code, pairing.qr(), network, BuildConfig.VERSION_NAME),
         settings = settings.value,
         devices = peers.view().map { Device(it.id, it.name, it.os, it.kind, it.icon, it.ip, it.port, it.online, it.paired, it.trusted) },
         history = history,
@@ -161,13 +198,13 @@ class Core(val ctx: Context) : Backend {
     override fun settings(change: (AppSettings) -> AppSettings) = settings.update(change)
 
     override fun rescan() { scope.launch { discovery.rescan() } }
-    override fun pairRequest(dev: String) {}
-    override fun pairRespond(dev: String, accept: Boolean, trust: Boolean) {}
-    override fun pairOutTrust(dev: String, trust: Boolean) {}
-    override fun pairCode(code: String) {}
-    override fun connectIp(ip: String, port: Int) {}
-    override fun newCode() {}
-    override fun qrScanned(text: String): Boolean = false
+    override fun pairRequest(dev: String) { scope.launch { pairing.request(dev) } }
+    override fun pairRespond(dev: String, accept: Boolean, trust: Boolean) = pairing.respond(dev, accept, trust)
+    override fun pairOutTrust(dev: String, trust: Boolean) = pairing.outTrust(dev, trust)
+    override fun pairCode(code: String) { scope.launch { pairing.enterCode(code) } }
+    override fun connectIp(ip: String, port: Int) { scope.launch { pairing.connectIp(ip, port) } }
+    override fun newCode() = pairing.newCode()
+    override fun qrScanned(text: String): Boolean = pairing.scanned(text)
     override fun setTrust(dev: String, trusted: Boolean) {
         peers.setTrust(dev, trusted)
         if (!trusted) toast("acc", R.string.t_untrusted, peers.get(dev)?.name ?: "")

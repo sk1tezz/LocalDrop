@@ -22,7 +22,7 @@ class PeersTest {
     val tmp = TemporaryFolder()
 
     @Test
-    fun controlConnectionAndRequestsBothWays() = runBlocking {
+    fun controlConnectionAndRequestsBothWays() = runBlocking<Unit> {
         val (py, pyPort, pyId) = pyNode(tmp.newFolder("desk"))
         py.use {
             KNode().use { k ->
@@ -46,7 +46,7 @@ class PeersTest {
     }
 
     @Test
-    fun unpairReachesTheOtherSide() = runBlocking {
+    fun unpairReachesTheOtherSide() = runBlocking<Unit> {
         val (py, pyPort, pyId) = pyNode(tmp.newFolder("desk"))
         py.use {
             KNode().use { k ->
@@ -68,7 +68,7 @@ class PeersTest {
     }
 
     @Test
-    fun unpairedDeviceGetsOnlyPairingMessages() = runBlocking {
+    fun unpairedDeviceGetsOnlyPairingMessages() = runBlocking<Unit> {
         val (py, pyPort, pyId) = pyNode(tmp.newFolder("desk"))
         py.use {
             KNode().use { k ->

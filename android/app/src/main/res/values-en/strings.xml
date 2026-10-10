@@ -287,4 +287,13 @@
     <string name="ch_service">Background service</string>
     <string name="perm_lan">Local network</string>
     <string name="perm_lan_sub">Without it Android blocks access to computers on your Wi-Fi</string>
+    <string name="t_already">Already connected</string>
+    <string name="t_by_code">%1$s, by pairing code</string>
+    <string name="t_busy">Device is busy</string>
+    <string name="t_busy_text">%1$s already has another request open</string>
+    <string name="t_request_in">Connection request</string>
+    <string name="t_request_cancelled">Request cancelled</string>
+    <string name="t_qr_self">That\'s this device\'s own QR code</string>
+    <string name="t_qr_failed">Couldn\'t connect by QR code</string>
+    <string name="t_qr_failed_text">The code may have expired. Try again</string>
 </resources>

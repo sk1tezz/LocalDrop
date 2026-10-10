@@ -4,6 +4,9 @@ import com.skz.localdrop.protocol.crypto.Identity
 import com.skz.localdrop.protocol.net.Device
 import com.skz.localdrop.protocol.net.PeerHost
 import com.skz.localdrop.protocol.net.PeerManager
+import com.skz.localdrop.protocol.net.PairState
+import com.skz.localdrop.protocol.net.Pairing
+import com.skz.localdrop.protocol.net.PairingHost
 import com.skz.localdrop.protocol.net.obj
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +32,20 @@ class KNode(name: String = "Phone") : AutoCloseable {
         override fun log(msg: String) = println("[kotlin] $msg")
     }
     val peers = PeerManager(host, ident, scope).also { it.start() }
+    val notices = CopyOnWriteArrayList<String>()
+    @Volatile var dialog: PairState? = null
+    val pairing = Pairing(object : PairingHost {
+        override fun pairChanged(p: PairState?) { dialog = p }
+        override fun codeChanged(code: String) {}
+        override fun notice(kind: String, key: String, vararg args: String) { notices.add(key); println("[kotlin] notice $key ${args.toList()}") }
+        override fun ip() = "127.0.0.1"
+    }, peers, scope).also { it.start() }
+
+    /** Make both nodes know each other's address without pairing. */
+    fun meet(py: PythonPeer, pyPort: Int, pyId: String) {
+        peers.seen(pyId, obj("name" to "Desktop", "ip" to "127.0.0.1", "port" to pyPort))
+        py.cmd("p.seen('${ident.id}', {'name': 'Phone', 'ip': '127.0.0.1', 'port': ${host.port}})")
+    }
 
     /** Introduce a desktop node to this one and pair both sides directly. */
     fun pairWith(py: PythonPeer, pyPort: Int, pyId: String, trusted: Boolean = true) {
@@ -39,6 +56,7 @@ class KNode(name: String = "Phone") : AutoCloseable {
     }
 
     override fun close() {
+        pairing.stop()
         peers.stop()
         scope.cancel()
     }

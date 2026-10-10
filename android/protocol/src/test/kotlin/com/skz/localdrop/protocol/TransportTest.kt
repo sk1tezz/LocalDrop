@@ -30,7 +30,7 @@ class TransportTest {
     fun tearDown() = scope.cancel()
 
     @Test
-    fun kotlinToKotlin() = runBlocking {
+    fun kotlinToKotlin() = runBlocking<Unit> {
         val a = Identity.generate()
         val b = Identity.generate()
         val got = CompletableDeferred<Pair<Conn, String>>()
@@ -56,7 +56,7 @@ class TransportTest {
     }
 
     @Test
-    fun wrongIdentityIsRejected() = runBlocking {
+    fun wrongIdentityIsRejected() = runBlocking<Unit> {
         val server = Server(0, Identity.generate(), scope) { it.recv() }.start()
         try {
             dial("127.0.0.1", server.localPort, Identity.generate(), expectedId = "00".repeat(16))
@@ -67,7 +67,7 @@ class TransportTest {
     }
 
     @Test
-    fun kotlinDialsDesktop() = runBlocking {
+    fun kotlinDialsDesktop() = runBlocking<Unit> {
         PythonPeer("serve").use { py ->
             val ready = py.line().split(" ")
             assertEquals("READY", ready[0])
@@ -89,7 +89,7 @@ class TransportTest {
     }
 
     @Test
-    fun desktopDialsKotlin() = runBlocking {
+    fun desktopDialsKotlin() = runBlocking<Unit> {
         val me = Identity.generate()
         val seen = CompletableDeferred<Conn>()
         val server = Server(0, me, scope) { conn ->

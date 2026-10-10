@@ -10,11 +10,12 @@ import com.skz.localdrop.ui.LocalDropUi
 import com.skz.localdrop.ui.demo.DemoBackend
 
 class MainActivity : AppCompatActivity() {
-    private val backend by lazy { DemoBackend(this) }
+    private val backend get() = (application as LocalDropApp).backend
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent { LocalDropUi(backend, isSystemInDarkTheme()) }
+        intent?.getStringExtra("demo")?.let { (backend as? DemoBackend)?.demo(it) }
     }
 }

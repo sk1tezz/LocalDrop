@@ -91,7 +91,7 @@ class DemoBackend(private val ctx: Context) : Backend {
                 incoming = IncomingAudio("d2", 65, "bt", true, "192 kbit/s"), listening = "d2", latency = 90,
                 outputs = listOf(AudioOutput("speaker", "Динамик телефона", "speaker"), AudioOutput("bt", "Pixel Buds Pro", "bt")),
             ),
-            perms = Perms(notify = true, battery = true, mic = false, camera = false),
+            perms = com.skz.localdrop.ui.readPerms(ctx),
         )
     }
 
@@ -231,5 +231,15 @@ class DemoBackend(private val ctx: Context) : Backend {
     }
 
     override fun historyAction(id: Long) {}
-    override fun refreshPerms() {}
+    /** Debug entry points for checking screens: adb shell am start ... -e demo onboarding|pair_in|pair_out|ask */
+    fun demo(what: String) {
+        when (what) {
+            "onboarding" -> settings { it.copy(onboarded = false) }
+            "pair_in" -> set { it.copy(pair = PairDialog("d9", "in", "MacBook Air", "macOS 15.0", "laptop_mac", "192.168.1.44", "731 064")) }
+            "pair_out" -> pairRequest("d5")
+            "ask" -> set { it.copy(transfers = listOf(Transfer("ask1", "in", "d2", "Отчёт_октябрь.pdf", "doc", 1, 2202009, 0, 0.0, "ask")) + it.transfers) }
+        }
+    }
+
+    override fun refreshPerms() = set { it.copy(perms = com.skz.localdrop.ui.readPerms(ctx, it.perms.tile)) }
 }

@@ -46,6 +46,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -89,8 +90,11 @@ class Nav {
     fun push(s: String) { sub = s; sheet = null }
 }
 
-/** System pickers; files go to the device passed in. */
-class Pickers(val files: (String) -> Unit, val media: (String) -> Unit, val folder: (String) -> Unit, val saveDir: () -> Unit)
+/** System pickers and system requests; files go to the device passed in. */
+class Pickers(
+    val files: (String) -> Unit, val media: (String) -> Unit, val folder: (String) -> Unit, val saveDir: () -> Unit,
+    val addTile: () -> Unit = {}, val addWidget: () -> Unit = {},
+)
 
 val LocalNav = staticCompositionLocalOf { Nav() }
 val LocalBackend = staticCompositionLocalOf<Backend> { error("no backend") }
@@ -157,7 +161,7 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
         ) {
             Box(Modifier.fillMaxSize().background(Ld.c.bg)) {
                 Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f).statusBarsPadding().imePadding()) { Screen(s, nav) }
+                    Box(Modifier.weight(1f).statusBarsPadding().imePadding().clipToBounds()) { Screen(s, nav) }
                     if (nav.sub == null) BottomNav(s, nav)
                     else Box(Modifier.navigationBarsPadding())
                 }

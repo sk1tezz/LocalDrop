@@ -58,6 +58,7 @@ class ClipTileService : TileService() {
         }
     }
 
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")     // Android 11-13 have only the Intent version
     override fun onClick() {
         val i = Intent(this, ClipSendActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE))

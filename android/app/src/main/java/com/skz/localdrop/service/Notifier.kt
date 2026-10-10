@@ -68,8 +68,12 @@ class Notifier(private val core: Core) {
 
     private fun builder(ch: String) = NotificationCompat.Builder(ctx, ch).setSmallIcon(R.drawable.ic_stat).setColor(0xFF3BC4E0.toInt())
 
+    @android.annotation.SuppressLint("MissingPermission")    // checked right here
     private fun post(id: Int, n: android.app.Notification) {
-        runCatching { nm.notify(id, n) }       // no permission: silently nothing
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
+        runCatching { nm.notify(id, n) }
     }
 
     // ---- generic notices --------------------------------------------------

@@ -38,12 +38,6 @@
         <item quantity="many">%1$d устройств в сети</item>
         <item quantity="other">%1$d устройства в сети</item>
     </plurals>
-    <plurals name="n_active">
-        <item quantity="one">%1$d активная</item>
-        <item quantity="few">%1$d активные</item>
-        <item quantity="many">%1$d активных</item>
-        <item quantity="other">%1$d активной</item>
-    </plurals>
     <string name="nav_home">Главная</string>
     <string name="nav_devices">Устройства</string>
     <string name="nav_files">Файлы</string>
@@ -156,8 +150,6 @@
     <string name="of">%1$s из %2$s</string>
     <string name="accept">Принять</string>
     <string name="decline">Отклонить</string>
-    <string name="retry">Повторить</string>
-    <string name="open">Открыть</string>
     <string name="save_default">Загрузки/LocalDrop</string>
     <string name="no_target_hint">Подключите компьютер во вкладке «Устройства» — и сюда можно будет отправлять файлы.</string>
     <string name="clip_send_phone">Отправить буфер телефона</string>
@@ -204,7 +196,6 @@
     <string name="out_bt">Bluetooth</string>
     <string name="out_wired">Проводные наушники</string>
     <string name="out_usb">USB</string>
-    <string name="connected">Подключено</string>
     <string name="not_online_suffix">не в сети</string>
     <string name="kbps">кбит/с</string>
     <string name="out_default">По умолчанию</string>

@@ -3,6 +3,8 @@ package com.skz.localdrop.system
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +54,10 @@ class LocalDropWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val core = (context.applicationContext as LocalDropApp).core
         core.start()
-        provideContent { Content(context, core.state.value) }
+        provideContent {
+            val s by core.state.collectAsState()
+            Content(context, s)
+        }
     }
 
     private fun c(day: Long, night: Long): GColor = ColorProvider(Color(day), Color(night))

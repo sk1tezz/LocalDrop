@@ -31,10 +31,6 @@
         <item quantity="one">%1$d device online</item>
         <item quantity="other">%1$d devices online</item>
     </plurals>
-    <plurals name="n_active">
-        <item quantity="one">%1$d active</item>
-        <item quantity="other">%1$d active</item>
-    </plurals>
     <string name="nav_home">Home</string>
     <string name="nav_devices">Devices</string>
     <string name="nav_files">Files</string>
@@ -147,8 +143,6 @@
     <string name="of">%1$s of %2$s</string>
     <string name="accept">Accept</string>
     <string name="decline">Decline</string>
-    <string name="retry">Retry</string>
-    <string name="open">Open</string>
     <string name="save_default">Downloads/LocalDrop</string>
     <string name="no_target_hint">Connect a computer on the Devices tab to send files here.</string>
     <string name="clip_send_phone">Send the phone\'s clipboard</string>
@@ -195,7 +189,6 @@
     <string name="out_bt">Bluetooth</string>
     <string name="out_wired">Wired headphones</string>
     <string name="out_usb">USB</string>
-    <string name="connected">Connected</string>
     <string name="not_online_suffix">offline</string>
     <string name="kbps">kbit/s</string>
     <string name="out_default">Default</string>

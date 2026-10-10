@@ -88,7 +88,7 @@ private fun HistRow(s: AppState, h: HistoryItem) {
         IconTile(if (h.err) "error" else ft.icon, if (h.err) c.badT else ft.tint, if (h.err) c.bad else ft.color, size = 38.dp, iconSize = 20.dp)
         Column(Modifier.weight(1f)) {
             Txt(h.title, size = 14.sp, weight = 600, maxLines = 1)
-            if (h.sub.isNotEmpty()) Txt(h.sub, size = 12.sp, color = if (h.err) c.bad else c.tx2, maxLines = 1)
+            if (h.sub.isNotEmpty()) Txt(f.sub(h.sub), size = 12.sp, color = if (h.err) c.bad else c.tx2, maxLines = 1)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Ic(dirIcon(h.dir), size = 13.dp, color = c.tx3)
                 Txt(devName(s, h.dev), size = 11.sp, color = c.tx3, maxLines = 1)

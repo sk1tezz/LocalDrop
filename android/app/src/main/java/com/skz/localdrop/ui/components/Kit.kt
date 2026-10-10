@@ -550,6 +550,6 @@ private class PressNode(
 /** Let a horizontally scrolling row reach the screen edges past the parent's [by] padding (margin: 0 -16px). */
 fun Modifier.bleed(by: Dp): Modifier = this.layout { m, c ->
     val p = by.roundToPx()
-    val placeable = m.measure(c.copy(minWidth = 0, maxWidth = c.maxWidth + 2 * p))
+    val placeable = m.measure(c.copy(minWidth = c.minWidth + 2 * p, maxWidth = c.maxWidth + 2 * p))
     layout(placeable.width - 2 * p, placeable.height) { placeable.place(-p, 0) }
 }

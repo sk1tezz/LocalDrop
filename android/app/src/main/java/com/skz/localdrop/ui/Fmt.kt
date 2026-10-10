@@ -1,6 +1,11 @@
 package com.skz.localdrop.ui
 
 import android.content.Context
+import android.content.res.Resources
+import com.skz.localdrop.protocol.net.json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -14,8 +19,9 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /** Sizes, speeds, times and plurals, as in ui/core.js on the desktop. */
-class Fmt(private val ctx: Context) {
-    private val res = ctx.resources
+class Fmt(private val res: Resources) {
+    constructor(ctx: Context) : this(ctx.resources)
+
     val ru: Boolean = res.configuration.locales[0].language == "ru"
 
     fun s(id: Int, vararg args: Any): String = res.getString(id, *args)
@@ -87,6 +93,52 @@ class Fmt(private val ctx: Context) {
             h < 18 -> R.string.greet_day
             else -> R.string.greet_evening
         })
+    }
+
+    /** History lines and errors are stored as {"k": key, "a": [args]} so they follow the UI language. */
+    fun sub(raw: String): String {
+        val o = parse(raw) ?: return raw
+        val key = (o["k"] as? JsonPrimitive)?.content ?: return raw
+        val args = (o["a"] as? JsonArray)?.map { arg(it) } ?: emptyList()
+        val id = res.getIdentifier(key, "string", PKG)
+        return if (id != 0) res.getString(id, *args.toTypedArray()) else key
+    }
+
+    /** Error codes from the file engine or the other device. */
+    fun err(raw: String): String {
+        if (raw.isEmpty()) return ""
+        val o = parse(raw)
+        val key = o?.let { (it["k"] as? JsonPrimitive)?.content } ?: raw
+        val args = (o?.get("a") as? JsonArray)?.map { arg(it) } ?: emptyList()
+        val id = ERR[key] ?: return if (args.isEmpty()) key else key.replace("{0}", args[0])
+        return res.getString(id, *args.toTypedArray())
+    }
+
+    private fun parse(raw: String): JsonObject? =
+        if (raw.startsWith("{")) runCatching { json.parseToJsonElement(raw) as JsonObject }.getOrNull() else null
+
+    private fun arg(e: kotlinx.serialization.json.JsonElement): String = when (e) {
+        is JsonObject -> when {
+            "size" in e -> size((e["size"] as JsonPrimitive).content.toDouble().toLong())
+            "files" in e -> pl(R.plurals.n_files, (e["files"] as JsonPrimitive).content.toDouble().toInt())
+            "dur" in e -> duration((e["dur"] as JsonPrimitive).content.toDouble().toLong())
+            else -> ""
+        }
+        is JsonPrimitive -> e.content.let { if (it.startsWith("{")) err(it) else it }
+        else -> e.toString()
+    }
+
+    companion object {
+        private const val PKG = "com.skz.localdrop"
+        private val ERR = mapOf(
+            "disabled" to R.string.e_disabled, "space" to R.string.e_space, "unknown" to R.string.e_unknown,
+            "bad offer" to R.string.e_bad_offer, "error" to R.string.e_error, "read failed" to R.string.e_read,
+            "changed" to R.string.e_changed, "hash" to R.string.e_hash, "list mismatch" to R.string.e_list,
+            "no fin" to R.string.e_fin, "bad path" to R.string.e_path, "bad resume offset" to R.string.e_resume,
+            "cannot write {0}" to R.string.e_write, "no free file name" to R.string.e_name, "data without file" to R.string.e_proto,
+            "bad message" to R.string.e_proto, "empty offer" to R.string.e_bad_offer, "paused" to R.string.e_paused,
+            "declined" to R.string.st_declined, "cancelled" to R.string.st_cancelled,
+        )
     }
 }
 

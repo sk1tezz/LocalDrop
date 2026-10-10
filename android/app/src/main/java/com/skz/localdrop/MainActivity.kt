@@ -24,6 +24,18 @@ class MainActivity : AppCompatActivity() {
             core.start()
         }
         setContent { LocalDropUi(backend, isSystemInDarkTheme()) }
+        debugHooks(intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        debugHooks(intent)
+    }
+
+    /** Debug builds only: adb shell am start ... -e connect 10.0.2.2:53400 (emulator tests without typing). */
+    private fun debugHooks(intent: android.content.Intent?) {
+        if (!BuildConfig.DEBUG) return
+        intent?.getStringExtra("connect")?.split(":")?.let { (ip, port) -> core.connectIp(ip, port.toInt()) }
     }
 
     override fun onStart() {

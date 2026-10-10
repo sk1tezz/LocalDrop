@@ -166,7 +166,7 @@ private fun DoneRow(s: AppState, t: Transfer) {
                 Ic(dirIcon(t.dir), size = 14.dp, color = c.tx3)
                 val tail = when (t.status) {
                     "done" -> f.hhmm(t.`when`)
-                    "error" -> t.error.ifEmpty { transferState(f, t) }
+                    "error" -> f.err(t.error).ifEmpty { transferState(f, t) }
                     else -> transferState(f, t)
                 }
                 Txt(devName(s, t.dev) + " · " + transferMeta(f, t) + " · " + tail, size = 12.sp, color = if (err) c.bad else c.tx3, maxLines = 1)

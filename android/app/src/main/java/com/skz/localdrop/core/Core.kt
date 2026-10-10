@@ -106,6 +106,11 @@ class Core(val ctx: Context) : Backend {
         }
     }
 
+    val notify = com.skz.localdrop.service.Notifier(this)
+    val files = FilesGlue(this)
+
+    fun navigate(screen: String) { events.tryEmit(UiEvent.Navigate(screen)) }
+
     /** Started once from the service (or the activity if the service could not start). */
     fun start() {
         if (!started.compareAndSet(false, true)) return
@@ -124,6 +129,7 @@ class Core(val ctx: Context) : Backend {
         }
         discovery.start()
         pairing.start()
+        files.service.start()
         publish()
     }
 
@@ -153,6 +159,7 @@ class Core(val ctx: Context) : Backend {
         me = Me(ident.id, settings.value.deviceName, ip, port, code, pairing.qr(), network, BuildConfig.VERSION_NAME),
         settings = settings.value,
         devices = peers.view().map { Device(it.id, it.name, it.os, it.kind, it.icon, it.ip, it.port, it.online, it.paired, it.trusted) },
+        transfers = files.view(),
         history = history,
         pair = pair,
         scanning = scanning,
@@ -218,16 +225,16 @@ class Core(val ctx: Context) : Backend {
         }
     }
 
-    override fun sendUris(dev: String, uris: List<Uri>, folder: Boolean) {}
-    override fun offerRespond(tid: String, accept: Boolean) {}
-    override fun transferToggle(tid: String) {}
-    override fun transferCancel(tid: String) {}
-    override fun transferRetry(tid: String) {}
-    override fun pauseAll() {}
-    override fun resumeAll() {}
-    override fun clearDone() {}
-    override fun openTransfer(tid: String) {}
-    override fun setSaveDir(uri: Uri?) {}
+    override fun sendUris(dev: String, uris: List<Uri>, folder: Boolean) = files.send(dev, uris, folder)
+    override fun offerRespond(tid: String, accept: Boolean) { scope.launch { files.service.respond(tid, accept) } }
+    override fun transferToggle(tid: String) { scope.launch { files.service.toggle(tid) } }
+    override fun transferCancel(tid: String) { scope.launch { files.service.cancel(tid) } }
+    override fun transferRetry(tid: String) { scope.launch { files.service.retry(tid) } }
+    override fun pauseAll() { scope.launch { files.service.pauseAll() } }
+    override fun resumeAll() { scope.launch { files.service.resumeAll() } }
+    override fun clearDone() = files.service.clearDone()
+    override fun openTransfer(tid: String) = files.open(tid)
+    override fun setSaveDir(uri: Uri?) = files.setSaveDir(uri)
     override fun clipSendCurrent(dev: String?) {}
     override fun clipCopy(id: Long) {}
     override fun clipSend(id: Long) {}
@@ -246,7 +253,12 @@ class Core(val ctx: Context) : Backend {
         historyChanged()
     }
 
-    override fun historyAction(id: Long) {}
+    override fun historyAction(id: Long) {
+        val h = storage.historyItem(id) ?: return
+        when (h.type) {
+            "files" -> files.historyAction(h)
+        }
+    }
 
     override fun refreshPerms() {
         val before = perms

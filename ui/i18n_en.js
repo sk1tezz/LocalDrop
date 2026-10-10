@@ -26,6 +26,8 @@ window.I18N_EN = {
 "отказ": "refused",
 "Устройство отключилось": "Device disconnected",
 "{0} больше не принимает звук": "{0} no longer receives sound",
+"{0} больше не сопряжено с этим ПК": "{0} is no longer paired with this computer",
+"Сопряжение удалено": "Unpaired",
 "Входящий звук": "Incoming sound",
 "нет устройства вывода для захвата": "no output device to capture",
 "устройство ввода не найдено": "input device not found",

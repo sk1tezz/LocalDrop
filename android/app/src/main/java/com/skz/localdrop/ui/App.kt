@@ -159,6 +159,8 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
     }
 
     val view = LocalView.current
+    val keepOn = s.settings.keepAwake && s.transfers.any { it.status == "active" }
+    SideEffect { view.keepScreenOn = keepOn }
     SideEffect {
         val w = (view.context as? Activity)?.window ?: return@SideEffect
         WindowCompat.getInsetsController(w, view).run {

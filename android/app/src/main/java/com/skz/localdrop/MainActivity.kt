@@ -25,11 +25,17 @@ class MainActivity : AppCompatActivity() {
         }
         setContent { LocalDropUi(backend, isSystemInDarkTheme()) }
         debugHooks(intent)
+        openScreen(intent)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         debugHooks(intent)
+        openScreen(intent)
+    }
+
+    private fun openScreen(intent: android.content.Intent?) {
+        intent?.getStringExtra("screen")?.let { core.navigate(it) }
     }
 
     /** Debug builds only: adb shell am start ... -e connect 10.0.2.2:53400 (emulator tests without typing). */

@@ -179,9 +179,9 @@ class ClipGlue(private val core: Core) {
         val kindText = core.str(if (c.ctype == "text") R.string.f_text else R.string.clip_image)
         if (d.trusted && core.settings.value.clipAuto) {
             apply(c)
-            if (msg.header.bool("manual") == true) core.toast("clip", R.string.t_clip_updated, core.str(R.string.t_from, kindText, d.name))
+            if (msg.header.bool("manual") == true) core.toast("clip", R.string.t_clip_updated, core.str(R.string.t_from, kindText, d.name), system = false)
         } else {
-            core.toast("clip", R.string.t_clip_got, core.str(R.string.t_clip_got_text, d.name))
+            core.toast("clip", R.string.t_clip_got, core.str(R.string.t_clip_got_text, d.name), system = false)
         }
         core.notify.clip(d.name, if (c.ctype == "text") c.text else "${c.w}×${c.h}", core.storage.clips().firstOrNull()?.id ?: 0)
         return ok()

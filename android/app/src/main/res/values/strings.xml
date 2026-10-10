@@ -372,4 +372,13 @@
     <string name="e_audio_disabled_pc">приём звука выключен</string>
     <string name="t_dev_left">Устройство отключилось</string>
     <string name="t_dev_left_text">%1$s больше не принимает звук</string>
+    <string name="ch_transfers">Передачи файлов</string>
+    <string name="ch_requests">Запросы</string>
+    <string name="ch_clip">Буфер обмена</string>
+    <string name="ch_audio">Звук</string>
+    <string name="ch_events">События</string>
+    <string name="n_clip_from">Буфер с %1$s</string>
+    <string name="copy">Копировать</string>
+    <string name="n_pair_code">Код %1$s — сверьте его на экране компьютера</string>
+    <string name="n_audio_text">Нажмите, чтобы открыть LocalDrop</string>
 </resources>

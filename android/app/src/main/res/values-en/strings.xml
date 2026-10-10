@@ -361,4 +361,13 @@
     <string name="e_audio_disabled_pc">audio receiving is off</string>
     <string name="t_dev_left">Device disconnected</string>
     <string name="t_dev_left_text">%1$s no longer receives sound</string>
+    <string name="ch_transfers">File transfers</string>
+    <string name="ch_requests">Requests</string>
+    <string name="ch_clip">Clipboard</string>
+    <string name="ch_audio">Sound</string>
+    <string name="ch_events">Events</string>
+    <string name="n_clip_from">Clipboard from %1$s</string>
+    <string name="copy">Copy</string>
+    <string name="n_pair_code">Code %1$s: compare it with the computer\'s screen</string>
+    <string name="n_audio_text">Tap to open LocalDrop</string>
 </resources>

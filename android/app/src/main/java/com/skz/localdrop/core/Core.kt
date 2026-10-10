@@ -97,7 +97,7 @@ class Core(val ctx: Context) : Backend {
             "connected_code" -> toast(kind, R.string.t_connected, str(R.string.t_by_code, arg))
             "busy" -> toast(kind, R.string.t_busy, str(R.string.t_busy_text, arg))
             "declined" -> toast(kind, R.string.t_conn_declined, arg)
-            "request_in" -> toast(kind, R.string.t_request_in, arg)
+            "request_in" -> toast(kind, R.string.t_request_in, arg, system = false)
             "cancelled" -> toast(kind, R.string.t_request_cancelled, arg)
             "own_code" -> toast(kind, R.string.t_own_code, str(R.string.t_own_code_text))
             "code_bad" -> toast(kind, R.string.t_code_bad, str(R.string.t_code_bad_text))
@@ -107,6 +107,7 @@ class Core(val ctx: Context) : Backend {
     }
 
     val notify = com.skz.localdrop.service.Notifier(this)
+    val locks = Locks(ctx)
     val files = FilesGlue(this)
     val clip = ClipGlue(this)
     val audio = com.skz.localdrop.audio.AudioGlue(this)
@@ -148,7 +149,10 @@ class Core(val ctx: Context) : Backend {
         if (publishJob?.isActive == true) return
         publishJob = scope.launch {
             delay(50)
-            _state.value = build()
+            val s = build()
+            _state.value = s
+            notify.update(s)
+            locks.update(s.transfers.any { it.status == "active" } || s.audio.on || s.audio.incoming != null)
         }
     }
 
@@ -184,9 +188,11 @@ class Core(val ctx: Context) : Backend {
     fun str(id: Int, vararg args: Any): String = res().getString(id, *args)
     fun plural(id: Int, n: Int): String = res().getQuantityString(id, n, n)
 
-    fun toast(kind: String, title: Int, text: String = "") {
+    /** In-app notice; with [system] also an OS notification while the app is in the background. */
+    fun toast(kind: String, title: Int, text: String = "", system: Boolean = true) {
         if (!settings.value.notify && kind != "bad") return
         events.tryEmit(UiEvent.ShowToast(Toast(kind, str(title), text)))
+        if (system) notify.event(str(title), text)
     }
 
     // ---- identity ---------------------------------------------------------

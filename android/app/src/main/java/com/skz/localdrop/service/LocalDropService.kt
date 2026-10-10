@@ -38,6 +38,7 @@ class LocalDropService : Service() {
         super.onCreate()
         instance = this
         Notifications.channels(this)
+        Notifier.channels(this, (application as LocalDropApp).core)
         applyTypes()
         val core = (application as LocalDropApp).core
         core.start()

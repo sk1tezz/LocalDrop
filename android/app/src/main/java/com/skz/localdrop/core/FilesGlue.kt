@@ -78,16 +78,16 @@ class FilesGlue(private val core: Core) {
 
     private fun offer(t: Transfer, auto: Boolean) {
         val text = core.str(R.string.t_offer_text, t.name, fmt().size(t.size), devName(t.dev))
-        if (auto) core.toast("files", R.string.t_incoming, text)
+        if (auto) core.toast("files", R.string.t_incoming, text, system = false)
         else {
-            core.toast("files", R.string.t_ask, text)
+            core.toast("files", R.string.t_ask, text, system = false)
             core.navigate("files")
         }
         core.notify.offer(t, auto, text)
     }
 
     private fun received(t: Transfer) {
-        core.toast("files", R.string.t_received, core.str(R.string.t_from, t.name, devName(t.dev)))
+        core.toast("files", R.string.t_received, core.str(R.string.t_from, t.name, devName(t.dev)), system = false)
         core.notify.received(t, location(t))
         if (core.settings.value.sounds) runCatching {
             RingtoneManager.getRingtone(ctx, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))?.play()

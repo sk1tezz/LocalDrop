@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -544,4 +545,11 @@ private class PressNode(
         drawContent()
         if (alpha.value > 0f) drawRect(color.copy(alpha = alpha.value))
     }
+}
+
+/** Let a horizontally scrolling row reach the screen edges past the parent's [by] padding (margin: 0 -16px). */
+fun Modifier.bleed(by: Dp): Modifier = this.layout { m, c ->
+    val p = by.roundToPx()
+    val placeable = m.measure(c.copy(minWidth = 0, maxWidth = c.maxWidth + 2 * p))
+    layout(placeable.width - 2 * p, placeable.height) { placeable.place(-p, 0) }
 }

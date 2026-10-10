@@ -1,6 +1,10 @@
 package com.skz.localdrop.ui
 
+import android.app.Activity
 import android.net.Uri
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -135,6 +139,15 @@ fun LocalDropUi(backend: Backend, systemDark: Boolean) {
             folder = { pickFor = it; folder.launch(null) },
             saveDir = { saveDir.launch(null) },
         )
+    }
+
+    val view = LocalView.current
+    SideEffect {
+        val w = (view.context as? Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(w, view).run {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
     }
 
     LdTheme(dark, s.settings.featureColors) {

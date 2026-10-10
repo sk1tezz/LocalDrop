@@ -60,6 +60,8 @@ class Player(private val rec: Receiver, private val ctx: Context, output: String
         Outputs.find(ctx, output)?.let { track.preferredDevice = it }
     }
 
+    val underruns get() = runCatching { track.underrunCount }.getOrDefault(-1)
+
     fun start() {
         track.play()
         thread.start()

@@ -153,11 +153,16 @@ class JitterBuffer(seconds: Double = 4.0) {
             data[p * 2 + 1] = pcm[j * 2 + 1]
             stamp[p] = i
         }
+        if (idx + k - 1 > newest) newest = idx + k - 1
     }
 
-    /** [count] stereo samples starting at fractional index [start], stepping by [ratio] (linear interpolation). */
+    /** Newest sample index written, for diagnostics. */
+    @Volatile var newest = -1L
+
+    /** [count] stereo samples starting at fractional index [start], stepping by [ratio] (linear interpolation). Returns how many were missing. */
     @Synchronized
-    fun read(start: Double, count: Int, ratio: Double, out: FloatArray, gain: Float) {
+    fun read(start: Double, count: Int, ratio: Double, out: FloatArray, gain: Float): Int {
+        var missing = 0
         for (j in 0 until count) {
             val x = start + j * ratio
             val i0 = floor(x).toLong()
@@ -166,6 +171,7 @@ class JitterBuffer(seconds: Double = 4.0) {
             val p1 = Math.floorMod(i0 + 1, n.toLong()).toInt()
             val aOk = stamp[p0] == i0
             val bOk = stamp[p1] == i0 + 1
+            if (!aOk) missing++
             val aL = if (aOk) data[p0 * 2] else 0f
             val aR = if (aOk) data[p0 * 2 + 1] else 0f
             val bL = if (bOk) data[p1 * 2] else aL
@@ -173,6 +179,7 @@ class JitterBuffer(seconds: Double = 4.0) {
             out[j * 2] = (aL * (1 - frac) + bL * frac) * gain
             out[j * 2 + 1] = (aR * (1 - frac) + bR * frac) * gain
         }
+        return missing
     }
 }
 
@@ -200,6 +207,11 @@ class Receiver(
     @Volatile var bytes = 0L
     @Volatile var codec = 0
     @Volatile var syncReplies = 0L
+    // diagnostics: samples played as silence, re-locks (jumps), and how far behind the newest sample playback is
+    @Volatile var missing = 0L
+    @Volatile var relocks = 0L
+    @Volatile var lagMs = 0.0
+
     /**
      * When no clock replies come back (a firewall dropping UDP to the sender), the offset is
      * estimated from arrival times: sender time of a packet minus when it arrived, the largest
@@ -240,35 +252,39 @@ class Receiver(
             } catch (_: Exception) {
                 if (stopped) return else continue
             }
-            val (type, plain) = rx.open(pk.data, pk.length) ?: continue
-            if (type == T_SYNC_RESP && plain.size == 16) {
-                val b = ByteBuffer.wrap(plain)
-                clock.add(b.long, b.long, nowNs())
-                syncReplies++
-            } else if (type == T_AUDIO && plain.size > 17) {
-                val arrived = nowNs()
-                val b = ByteBuffer.wrap(plain)
-                val idx = b.long
-                val st0 = b.long
-                val c = b.get().toInt()
-                val est = st0 + idx * NS / RATE - arrived
-                val prev = arrivalOffset
-                arrivalOffset = if (prev == null || t0 != st0) est else maxOf(prev, est)
-                val dec = decs[c] ?: decoders(c)?.also { decs[c] = it } ?: continue
-                synchronized(this) {
-                    if (t0 != st0) {          // the sender (re)started its timeline
-                        t0 = st0
-                        pos = null
-                    }
+            handle(pk)
+        }
+    }
+
+    private fun handle(pk: DatagramPacket) {
+        val (type, plain) = rx.open(pk.data, pk.length) ?: return
+        if (type == T_SYNC_RESP && plain.size == 16) {
+            val b = ByteBuffer.wrap(plain)
+            clock.add(b.long, b.long, nowNs())
+            syncReplies++
+        } else if (type == T_AUDIO && plain.size > 17) {
+            val arrived = nowNs()
+            val b = ByteBuffer.wrap(plain)
+            val idx = b.long
+            val st0 = b.long
+            val c = b.get().toInt()
+            val est = st0 + idx * NS / RATE - arrived
+            val prev = arrivalOffset
+            arrivalOffset = if (prev == null || t0 != st0) est else maxOf(prev, est)
+            val dec = decs[c] ?: decoders(c)?.also { decs[c] = it } ?: return
+            synchronized(this) {
+                if (t0 != st0) {          // the sender (re)started its timeline
+                    t0 = st0
+                    pos = null
                 }
-                val out = dec.decode(idx, plain.copyOfRange(17, plain.size))
-                if (out.isEmpty()) continue
-                for ((i, pcm) in out) buf.write(i, pcm)
-                packets++
-                bytes += pk.length
-                codec = c
-                lastPacket = System.currentTimeMillis()
             }
+            val out = dec.decode(idx, plain.copyOfRange(17, plain.size))
+            if (out.isEmpty()) return
+            for ((i, pcm) in out) buf.write(i, pcm)
+            packets++
+            bytes += pk.length
+            codec = c
+            lastPacket = System.currentTimeMillis()
         }
     }
 
@@ -281,15 +297,35 @@ class Receiver(
     /** True while playing on the arrival-time estimate (no clock replies from the sender). */
     val estimatedClock get() = clock.offset == null && ready
 
+    /**
+     * The output's own latency (AudioTrack plus the device: tens of ms on a speaker, 150+ ms
+     * over Bluetooth), tracked from how far ahead [render] is asked to fill. It rises at once
+     * and falls slowly, so short dips do not move playback.
+     */
+    @Volatile var outputLatencyNs = 0L
+        private set
+
+    /** Wi-Fi jitter allowance on top of the output latency. */
+    var marginNs = 50_000_000L
+
+    /**
+     * The delay actually used: the sender's, unless this output is slower than that. Then the
+     * sender's delay would ask for sound that has not arrived yet (silence); this device plays
+     * a little later than the other rooms instead.
+     */
+    val effectiveDelayNs get() = max(delayNs, outputLatencyNs + marginNs)
+
     /** Sample index that should be heard at local time [playLocalNs]. */
     private fun targetIndex(playLocalNs: Long): Double {
-        val senderTime = playLocalNs + offset!! - delayNs
+        val senderTime = playLocalNs + offset!! - effectiveDelayNs
         return (senderTime - t0!!).toDouble() * RATE / NS
     }
 
     /** [count] stereo samples into [out] that start playing at [playLocalNs]. */
     @Synchronized
     fun render(count: Int, playLocalNs: Long, out: FloatArray) {
+        val ahead = playLocalNs - nowNs()
+        outputLatencyNs = if (ahead > outputLatencyNs) ahead else outputLatencyNs - (outputLatencyNs - max(ahead, 0)) / 2000
         if (!ready) {
             out.fill(0f, 0, count * 2)
             return
@@ -299,12 +335,14 @@ class Receiver(
         if (p == null || abs(target - p) > RATE * 0.08) {
             pos = target                          // (re)lock: jump
             ratio = 1.0
+            relocks++
         } else {
             val err = target - p                  // positive: we are late
             ratio = 1.0 + max(-0.003, min(0.003, err / (RATE * 0.5)))
         }
         val g = (volume.coerceIn(0, 100) / 100.0).pow(1.6).toFloat()
-        buf.read(pos!!, count, ratio, out, g)
+        missing += buf.read(pos!!, count, ratio, out, g)
+        lagMs = (buf.newest - pos!!) * 1000.0 / RATE
         pos = pos!! + count * ratio
     }
 }

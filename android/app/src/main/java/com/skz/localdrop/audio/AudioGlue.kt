@@ -24,6 +24,8 @@ import com.skz.localdrop.core.TAG
 import com.skz.localdrop.protocol.audio.AudioKeys
 import com.skz.localdrop.protocol.audio.CODEC_OPUS
 import com.skz.localdrop.protocol.audio.CODEC_PCM
+import com.skz.localdrop.protocol.audio.OpusDecoder
+import com.skz.localdrop.protocol.audio.OpusEncoder
 import com.skz.localdrop.protocol.audio.Pcm
 import com.skz.localdrop.protocol.audio.Receiver
 import com.skz.localdrop.protocol.net.Conn
@@ -104,7 +106,7 @@ class AudioGlue(private val core: Core) {
                 }
                 if (inc != null) {
                     core.publish()                       // bitrate and connection state
-                    Log.d(TAG, "audio in: packets=${inc.rec.packets} syncReplies=${inc.rec.syncReplies} ready=${inc.rec.ready} estimated=${inc.rec.estimatedClock} rtt=${inc.rec.clock.rtt / 1000} us codec=${inc.rec.codec}")
+                    Log.d(TAG, "audio in: packets=${inc.rec.packets} syncReplies=${inc.rec.syncReplies} ready=${inc.rec.ready} estimated=${inc.rec.estimatedClock} rtt=${inc.rec.clock.rtt / 1000} us codec=${inc.rec.codec} missing=${inc.rec.missing} relocks=${inc.rec.relocks} lag=${"%.0f".format(inc.rec.lagMs)} ms outLat=${inc.rec.outputLatencyNs / 1_000_000} ms delay=${inc.rec.effectiveDelayNs / 1_000_000} ms underruns=${inc.player.underruns}")
                 }
             }
         }
@@ -128,7 +130,7 @@ class AudioGlue(private val core: Core) {
             on = on,
             error = error,
             remote = rem,
-            latency = if (on) core.settings.value.audioBuffer + EXTRA_LATENCY_MS else inc?.let { (it.rec.delayNs / 1_000_000).toInt() + 30 } ?: 0,
+            latency = if (on) core.settings.value.audioBuffer + EXTRA_LATENCY_MS else inc?.let { (it.rec.effectiveDelayNs / 1_000_000).toInt() } ?: 0,
             incoming = inc?.let { IncomingAudio(it.dev, it.vol, it.out.ifEmpty { localOut }, it.rec.ready, bitrate, note(it)) },
             listening = listening,
             outputs = Outputs.list(ctx).map { (name, d) -> AudioOutput(name, name, Outputs.type(d)) },
@@ -158,8 +160,7 @@ class AudioGlue(private val core: Core) {
         val vol = msg.header.int("vol") ?: 60
         val out = msg.header.str("out") ?: ""
         return withContext(Dispatchers.IO) {
-            // debug builds listen on a fixed port so the emulator can get UDP through `adb emu redir`
-            val local = if (com.skz.localdrop.BuildConfig.DEBUG) 53390 else 0
+            val local = 0
             val rec = Receiver(keys, InetSocketAddress(ip, port), msg.header.int("delay") ?: 60, vol, local) { c ->
                 when (c) {
                     CODEC_PCM -> Pcm

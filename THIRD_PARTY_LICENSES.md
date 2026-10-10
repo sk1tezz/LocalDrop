@@ -52,10 +52,10 @@ folder-style PyInstaller builds.
 | AndroidX (Compose, Activity, AppCompat, Core, Lifecycle, DocumentFile, CameraX, Glance, WorkManager, Room) | Apache-2.0 |
 | Bouncy Castle (bcprov-jdk18on) | MIT (Bouncy Castle License) |
 | ZXing core | Apache-2.0 |
+| Concentus (pure Java port of libopus) | BSD-3-Clause (the libopus license) |
 | Material Symbols Rounded (subset) | Apache-2.0 |
 | Manrope | SIL Open Font License 1.1 |
 | JetBrains Mono | SIL Open Font License 1.1 |
 
-Opus on Android comes from the platform's codecs (MediaCodec), not from a bundled library.
 
 The full license texts are available from each project's repository and package metadata.

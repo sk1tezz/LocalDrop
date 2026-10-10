@@ -1,8 +1,12 @@
 package com.skz.localdrop.protocol
 
 import com.skz.localdrop.protocol.audio.AudioKeys
+import com.skz.localdrop.protocol.audio.CODEC_OPUS
 import com.skz.localdrop.protocol.audio.CODEC_PCM
 import com.skz.localdrop.protocol.audio.Channel
+import com.skz.localdrop.protocol.audio.Encoder
+import com.skz.localdrop.protocol.audio.OpusDecoder
+import com.skz.localdrop.protocol.audio.OpusEncoder
 import com.skz.localdrop.protocol.audio.Pcm
 import com.skz.localdrop.protocol.audio.Receiver
 import com.skz.localdrop.protocol.audio.Sender
@@ -61,20 +65,37 @@ class AudioTest {
     private fun rms(x: FloatArray) = sqrt(x.map { it * it }.average()).toFloat()
 
     @Test
-    fun desktopStreamsToKotlin() {
+    fun desktopStreamsToKotlin() = desktopTo("hq", 60, 0)
+
+    @Test
+    fun desktopOpusToKotlin() = desktopTo("balance", 60, 0)
+
+    /**
+     * A phone's output lags 100-200 ms behind write time, more than the computer's 60 ms
+     * buffer: playback must wait for the sound instead of asking for samples not yet sent.
+     */
+    @Test
+    fun slowOutputStillPlays() = desktopTo("hq", 60, 180)
+
+    private fun desktopTo(quality: String, delayMs: Int, outputLatencyMs: Int) {
         val (py, _, _) = pyNode(tmp.newFolder("desk"))
         py.use {
             py.cmd("!import threading, time, numpy as np")
-            py.cmd("!snd = $st.Sender('hq'); snd.start()")
+            py.cmd("!snd = $st.Sender('$quality'); snd.start()")
             py.cmd("!stop = threading.Event()")
             py.cmd(FEEDER)
             val port = str(py.cmd("snd.port")).toInt()
-            val rec = Receiver(keys, InetSocketAddress("127.0.0.1", port), 60, 100) { c -> if (c == CODEC_PCM) Pcm else null }
+            val rec = Receiver(keys, InetSocketAddress("127.0.0.1", port), delayMs, 100) { c ->
+                when (c) { CODEC_PCM -> Pcm; CODEC_OPUS -> OpusDecoder(); else -> null }
+            }
             rec.start()
             py.cmd("snd.add_target('phone', ('127.0.0.1', ${rec.port}), $pyKeys)")
             waitFor { rec.ready && rec.packets > 100 }
-            val out = FloatArray(4800 * 2)
-            rec.render(4800, nowNs(), out)
+            // 40 ms, within the 50 ms Wi-Fi margin: a real output asks for 5 ms at a time
+            val out = FloatArray(1920 * 2)
+            val ahead = outputLatencyMs * 1_000_000L
+            rec.render(480, nowNs() + ahead, FloatArray(960))     // the output reports its latency
+            rec.render(1920, nowNs() + ahead, out)
             assertTrue("rms ${rms(out)}", rms(out) in 0.25f..0.45f)       // a 0.5 sine has rms 0.354
             assertTrue(rec.clock.rtt < 50_000_000)
             py.cmd("!stop.set(); snd.stop()")
@@ -108,10 +129,15 @@ class AudioTest {
     }
 
     @Test
-    fun kotlinStreamsToDesktop() {
+    fun kotlinStreamsToDesktop() = kotlinTo(Pcm)
+
+    @Test
+    fun kotlinOpusToDesktop() = kotlinTo(OpusEncoder(192_000))
+
+    private fun kotlinTo(encoder: Encoder) {
         val (py, _, _) = pyNode(tmp.newFolder("desk"))
         py.use {
-            val snd = Sender(Pcm)
+            val snd = Sender(encoder)
             snd.start()
             val feeder = Thread {
                 // like a real capture: as many samples as the clock says, in 10 ms chunks

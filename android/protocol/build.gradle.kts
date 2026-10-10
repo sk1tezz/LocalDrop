@@ -11,6 +11,7 @@ dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
     implementation(libs.bouncycastle)
+    implementation(libs.concentus)          // Opus in pure Java (BSD, as libopus)
     testImplementation(libs.junit)
 }
 

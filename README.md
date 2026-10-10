@@ -133,7 +133,6 @@ Release-сборка пока подписывается отладочным к
 .venv\Scripts\python desktop\tools\subset_icons.py # пересобрать шрифт иконок после новой иконки
 .venv\Scripts\python android\tools\subset_icons.py # то же для Android
 cd android && gradlew.bat :protocol:test           # протокол Android против настоящего кода десктопа
-cd android && gradlew.bat :app:connectedDebugAndroidTest   # Opus через MediaCodec на устройстве
 ```
 
 Тесты `:protocol` запускают `desktop/tools/interop_peer.py` из `.venv` и проверяют совместимость
@@ -145,7 +144,7 @@ Android (Kotlin, Jetpack Compose), `ui/` — интерфейс десктопа
 
 Структура `android/`: `protocol/` — протокол на чистом Kotlin/JVM (шифрованный транспорт,
 устройства, сопряжение, файлы, буфер, звук), повторяет `desktop/localdrop/net|files|clip|audio`;
-`app/` — Android: `core/` (ядро, хранилище, обнаружение, файлы, буфер), `audio/` (MediaCodec,
+`app/` — Android: `core/` (ядро, хранилище, обнаружение, файлы, буфер), `audio/` (Opus на Concentus,
 AudioTrack, захват), `service/` (служба, уведомления), `system/` («Поделиться», плитка, виджет),
 `ui/` (экраны).
 
